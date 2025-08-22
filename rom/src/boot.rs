@@ -1,6 +1,6 @@
 use core::{arch::asm, panic::PanicInfo, ptr};
 
-use crate::{main, sdk::scr::Console};
+use crate::{main, sdk::scr::{Bcr, Blitter, Console, SpriteMem}};
 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {
@@ -11,7 +11,7 @@ pub static mut VBLANK: bool = false;
 
 unsafe extern "C" {
     #[inline(always)]
-    pub unsafe fn null_interrupt();
+    pub unsafe fn return_from_interrupt();
 
     #[inline(always)]
     pub unsafe fn wait();
@@ -76,9 +76,7 @@ unsafe fn init_data_and_bss() {
 extern "C" fn vblank_nmi() {
     unsafe {
         VBLANK = true;
-    }
-    unsafe {
-        null_interrupt();
+        return_from_interrupt();
     }
 }
 
@@ -87,8 +85,44 @@ extern "C" fn vblank_nmi() {
 pub static _VECTOR_TABLE: [unsafe extern "C" fn(); 3] = [
     vblank_nmi,     // Non-Maskable Interrupt vector
     __boot,         // Reset vector
-    null_interrupt, // IRQ/BRK vector
+    return_from_interrupt, // IRQ/BRK vector
 ];
+
+pub enum SpriteQuadrant {
+    One,
+    Two,
+    Three,
+    Four    
+}
+
+impl SpriteQuadrant {
+    #[inline(always)]
+    pub fn value_gx(&self) -> u8 {
+        match self {
+            Self::One | Self::Three => 0,
+            Self::Two | Self::Four => 128
+        }
+    }
+
+    #[inline(always)]
+    pub fn value_gy(&self) -> u8 {
+        match self {
+            Self::One | Self::Two => 0,
+            Self::Three | Self::Four => 128
+        }
+    }
+}
+
+#[inline(always)]
+pub fn set_vram_quad(quad: SpriteQuadrant) {
+    unsafe { 
+        let bcr = &mut *(0x4000 as *mut Bcr);
+        bcr.vram_x.write(quad.value_gx());
+        bcr.vram_y.write(quad.value_gy());
+        bcr.start.write(1);
+        bcr.start.write(0);
+    }
+}
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn __boot() {
@@ -96,6 +130,8 @@ unsafe extern "C" fn __boot() {
         reset_banking_register();
         init_stack();
         init_data_and_bss();
+
+        set_vram_quad(SpriteQuadrant::One);
 
         main();
         core::panic!("Came out of main");

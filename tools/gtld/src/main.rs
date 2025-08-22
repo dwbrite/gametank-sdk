@@ -16,6 +16,7 @@ struct Opt {
     #[structopt(subcommand)]
     subcommand: Subcommands,
 }
+
 #[derive(Debug, PartialEq, StructOpt)]
 enum Subcommands {
     Load { file: Option<String> },

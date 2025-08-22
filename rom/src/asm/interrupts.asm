@@ -5,7 +5,7 @@ wait:
     WAI
     RTS
 
-return_from_interrupts:
+return_from_interrupt:
     RTI
 
 enable_irq_handler:
