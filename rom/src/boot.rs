@@ -1,6 +1,6 @@
 use core::{arch::asm, panic::PanicInfo, ptr};
 
-use crate::{main, sdk::scr::{Bcr, Blitter, Console, SpriteMem}};
+use crate::{main, sdk::{blitter::SpriteQuadrant, scr::Console}};
 
 #[panic_handler]
 fn panic(_panic: &PanicInfo<'_>) -> ! {
@@ -83,57 +83,37 @@ extern "C" fn vblank_nmi() {
 #[unsafe(link_section = ".vector_table")]
 #[unsafe(no_mangle)]
 pub static _VECTOR_TABLE: [unsafe extern "C" fn(); 3] = [
-    vblank_nmi,     // Non-Maskable Interrupt vector
-    __boot,         // Reset vector
+    vblank_nmi,            // Non-Maskable Interrupt vector
+    __boot,                // Reset vector
     return_from_interrupt, // IRQ/BRK vector
 ];
 
-pub enum SpriteQuadrant {
-    One,
-    Two,
-    Three,
-    Four    
-}
 
-impl SpriteQuadrant {
-    #[inline(always)]
-    pub fn value_gx(&self) -> u8 {
-        match self {
-            Self::One | Self::Three => 0,
-            Self::Two | Self::Four => 128
-        }
+#[inline(never)]
+fn call_main() {
+    let mut console = Console::init();
+    if let Some(mut blitter) = console.dma.blitter(&mut console.sc) {
+        blitter.draw_square(&mut console.sc, 0, 0, 10, 10, 0b1010_1010);
     }
 
-    #[inline(always)]
-    pub fn value_gy(&self) -> u8 {
-        match self {
-            Self::One | Self::Two => 0,
-            Self::Three | Self::Four => 128
-        }
+    if let Some(mut blitter) = console.dma.blitter(&mut console.sc) {
+        blitter.set_vram_quad(SpriteQuadrant::One);
     }
-}
 
-#[inline(always)]
-pub fn set_vram_quad(quad: SpriteQuadrant) {
-    unsafe { 
-        let bcr = &mut *(0x4000 as *mut Bcr);
-        bcr.vram_x.write(quad.value_gx());
-        bcr.vram_y.write(quad.value_gy());
-        bcr.start.write(1);
-        bcr.start.write(0);
-    }
+    main(console);
 }
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn __boot() {
     unsafe {
         reset_banking_register();
-        init_stack();
         init_data_and_bss();
+        init_stack();
 
-        set_vram_quad(SpriteQuadrant::One);
-
-        main();
+        // IMPORTANT: we can't initialize Console in __boot,
+        // because it messes with the stack BEFORE the stack is initialized
+        // we _can_, however, toss the initialization in a function which is never inlined :^)
+        call_main();
         core::panic!("Came out of main");
     }
 }

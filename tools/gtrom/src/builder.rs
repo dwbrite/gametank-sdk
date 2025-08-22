@@ -122,7 +122,7 @@ impl RomBuilder {
             );
         }
 
-        let mut file = File::create("flip.gtr").unwrap();
+        let mut file = File::create("balls.gtr").unwrap();
         let flat: &[u8; 2 * 1024 * 1024] = unsafe { core::mem::transmute(&rom) };
         file.write_all(flat).unwrap();
 

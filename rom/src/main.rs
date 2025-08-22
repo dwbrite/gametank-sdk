@@ -8,11 +8,9 @@ use core::ptr;
 use crate::{
     boot::{enable_irq_handler, wait},
     sdk::{
-        scr::{
-            Blitter, BlitterFillMode, BlitterGuard, Console, Framebuffers, SpriteMem,
-            SpriteMemGuard, SystemControl,
-        },
+        scr::{Console, SystemControl},
         via::Via,
+        video_dma::blitter::BlitterGuard,
     },
 };
 
@@ -38,6 +36,7 @@ fn fill_sprite_quad(console: &mut Console) {
         let mut x_counter: u8 = 0;
         let mut y_counter: u16 = 0;
         let mut xy_counter: u8 = 0;
+
         for (n, byte) in sm.bytes().iter_mut().enumerate() {
             if xy_counter == 16 {
                 color += 32;
@@ -107,9 +106,7 @@ impl Ball {
 // TODO: instead of doing console init - why not provide MAIN with a Console object, eh?
 // Then we can even keep Console::init private and not need to make a singleton
 #[unsafe(no_mangle)]
-fn main() {
-    let mut console = Console::init();
-
+fn main(mut console: Console) {
     let via = unsafe { Via::new() };
     via.change_rom_bank(125);
     fill_sprite_quad(&mut console);

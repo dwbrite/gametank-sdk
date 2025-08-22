@@ -4,7 +4,11 @@ use bitflags::{self, Flags};
 use volatile_register::WO;
 
 use crate::boot::{_VECTOR_TABLE, disable_irq_handler, enable_irq_handler, wait};
+use crate::sdk::blitter::BlitterFillMode;
 use crate::sdk::scr;
+use crate::sdk::video_dma::framebuffers::Framebuffers;
+use crate::sdk::video_dma::spritemem::SpriteMem;
+use crate::sdk::video_dma::{DmaManager, VideoDma};
 
 bitflags::bitflags! {
     #[derive(Copy, Clone)]
@@ -48,130 +52,17 @@ bitflags::bitflags! {
     }
 }
 
-pub enum VideoDma {
-    DmaFb(Framebuffers),
-    DmaBlit(Blitter),
-    DmaSprites(SpriteMem),
-}
-
-impl VideoDma {
-    #[inline(always)]
-    fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
-        match self {
-            VideoDma::DmaFb(framebuffers) => framebuffers,
-            VideoDma::DmaBlit(blitter) => blitter.framebuffers(sc),
-            VideoDma::DmaSprites(sprite_mem) => sprite_mem.framebuffers(sc),
-        }
-    }
-
-    #[inline(always)]
-    fn blitter(self, sc: &mut SystemControl) -> Blitter {
-        match self {
-            VideoDma::DmaFb(framebuffers) => framebuffers.blitter(sc),
-            VideoDma::DmaBlit(blitter) => blitter,
-            VideoDma::DmaSprites(sprite_mem) => sprite_mem.blitter(sc),
-        }
-    }
-
-    #[inline(always)]
-    fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
-        match self {
-            VideoDma::DmaFb(framebuffers) => framebuffers.sprite_mem(sc),
-            VideoDma::DmaBlit(blitter) => blitter.sprite_mem(sc),
-            VideoDma::DmaSprites(sprite_mem) => sprite_mem,
-        }
-    }
-}
-
-pub struct Framebuffers(());
-pub struct Blitter(());
-pub struct SpriteMem(());
-
-// DMA_ENABLE == 0 -> CPU can see video memory
-//   DMA_CPU_TO_VRAM == 1 -> Framebuffers
-//   DMA_CPU_TO_VRAM == 0 -> Sprite RAM
-// DMA_ENABLE == 1 -> Blitter Control Registers
-
-impl Framebuffers {
-    #[inline(always)]
-    pub fn blitter(self, sc: &mut SystemControl) -> Blitter {
-        sc.mir.video_reg.insert(VideoFlags::DMA_ENABLE);
-        sc.scr.video_reg = sc.mir.video_reg;
-        Blitter(())
-    }
-
-    #[inline(always)]
-    pub fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
-        // DMA_ENABLE is already false
-        sc.mir.video_reg.remove(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
-        SpriteMem(())
-    }
-}
-
-impl SpriteMem {
-    #[inline(always)]
-    pub fn blitter(self, sc: &mut SystemControl) -> Blitter {
-        sc.mir.video_reg.insert(VideoFlags::DMA_ENABLE);
-        sc.scr.video_reg = sc.mir.video_reg;
-        Blitter(())
-    }
-
-    #[inline(always)]
-    pub fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
-        // DMA_ENABLE is already false
-        sc.mir.video_reg.insert(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
-        Framebuffers(())
-    }
-}
-
-#[repr(C, packed)]
-pub struct Bcr {
-    pub fb_x: WO<u8>,
-    pub fb_y: WO<u8>,
-    pub vram_x: WO<u8>,
-    pub vram_y: WO<u8>,
-    pub width: WO<u8>,
-    pub height: WO<u8>,
-    pub start: WO<u8>,
-    pub color: WO<u8>,
-}
-
-/// Blitter Control Registers
-/// vram_VX 0x4000
-/// vram_VY 0x4001
-/// vram_GX 0x4002
-/// vram_GY 0x4003
-/// vram_WIDTH 0x4004
-/// vram_HEIGHT 0x4005
-/// vram_START 0x4006
-/// vram_COLOR 0x4007
-impl Bcr {
-    #[inline(always)]
-    unsafe fn new() -> &'static mut Bcr {
-        unsafe { &mut *(0x4000 as *mut Bcr) }
-    }
-}
-
-impl Blitter {
-    #[inline(always)]
-    pub fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
-        sc.mir.video_reg.remove(VideoFlags::DMA_ENABLE);
-        sc.mir.video_reg.insert(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
-        Framebuffers(())
-    }
-
-    #[inline(always)]
-    pub fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
-        sc.mir
-            .video_reg
-            .remove(VideoFlags::DMA_ENABLE | VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
-        SpriteMem(())
-    }
-}
+// #[repr(C, packed)]
+// pub struct Bcr {
+//     pub fb_x: WO<u8>,
+//     pub fb_y: WO<u8>,
+//     pub vram_x: WO<u8>,
+//     pub vram_y: WO<u8>,
+//     pub width: WO<u8>,
+//     pub height: WO<u8>,
+//     pub start: WO<u8>,
+//     pub color: WO<u8>,
+// }
 
 /// System Control Register
 /// $2000 	Write 1 to reset audio coprocessor
@@ -201,8 +92,8 @@ pub static mut SCR_MIR: Scr = Scr {
 };
 
 pub struct SystemControl {
-    scr: &'static mut Scr,
-    mir: &'static mut Scr,
+    pub(in crate::sdk) scr: &'static mut Scr,
+    pub(in crate::sdk) mir: &'static mut Scr,
 }
 
 impl SystemControl {
@@ -225,19 +116,7 @@ impl SystemControl {
             scr.audio_reg = mir.audio_reg;
             scr.video_reg = mir.video_reg;
 
-            // clear_irq();
-
             Self { scr, mir }
-        }
-    }
-
-    #[inline(always)]
-    pub fn set_bank(&mut self, bank: u8) {
-        unsafe {
-            // disable_irq();
-            _bank_shift_out(bank);
-            // TODO: idk
-            // enable_irq();
         }
     }
 
@@ -251,246 +130,17 @@ impl SystemControl {
     }
 }
 
-#[derive(PartialEq)]
-pub enum BlitterFillMode {
-    Sprite,
-    Color,
-}
-
-pub struct DmaManager {
-    pub video_dma: Option<VideoDma>,
-}
-
-impl DmaManager {
-    fn new(vdma: VideoDma) -> Self {
-        Self {
-            video_dma: Some(vdma),
-        }
-    }
-
-    pub fn blitter(&mut self, sc: &mut SystemControl) -> Option<BlitterGuard> {
-        let b = self.video_dma.take()?.blitter(sc);
-        Some(BlitterGuard {
-            dma_slot: &mut self.video_dma,
-            inner: b,
-        })
-    }
-
-    pub fn framebuffers(&mut self, sc: &mut SystemControl) -> Option<FramebuffersGuard> {
-        let fb = self.video_dma.take()?.framebuffers(sc);
-        Some(FramebuffersGuard {
-            dma_slot: &mut self.video_dma,
-            inner: fb,
-        })
-    }
-
-    pub fn sprite_mem(&mut self, sc: &mut SystemControl) -> Option<SpriteMemGuard> {
-        let sm = self.video_dma.take()?.sprite_mem(sc);
-        Some(SpriteMemGuard {
-            dma_slot: &mut self.video_dma,
-            inner: sm,
-        })
-    }
-}
-
 pub struct Console {
     pub sc: SystemControl,
     pub dma: DmaManager,
 }
 
-pub struct BlitterGuard<'a> {
-    dma_slot: &'a mut Option<VideoDma>,
-    inner: Blitter,
-}
-
-impl<'a> Drop for BlitterGuard<'a> {
-    fn drop(&mut self) {
-        *self.dma_slot = Some(VideoDma::DmaBlit(Blitter(())));
-    }
-}
-
-pub struct FramebuffersGuard<'a> {
-    dma_slot: &'a mut Option<VideoDma>,
-    inner: Framebuffers,
-}
-
-impl<'a> Drop for FramebuffersGuard<'a> {
-    fn drop(&mut self) {
-        *self.dma_slot = Some(VideoDma::DmaFb(Framebuffers(())));
-    }
-}
-
-pub struct SpriteMemGuard<'a> {
-    dma_slot: &'a mut Option<VideoDma>,
-    inner: SpriteMem,
-}
-
-impl<'a> Drop for SpriteMemGuard<'a> {
-    fn drop(&mut self) {
-        *self.dma_slot = Some(VideoDma::DmaSprites(SpriteMem(())));
-    }
-}
-
-impl<'a> SpriteMemGuard<'a> {
-    #[inline(always)]
-    pub fn bytes(&mut self) -> &mut [u8; 0x4000] {
-        unsafe { &mut *(0x4000 as *mut [u8; 0x4000]) }
-    }
-}
-
-impl<'a> FramebuffersGuard<'a> {
-    #[inline(always)]
-    pub fn bytes(&mut self) -> &mut [u8; 0x4000] {
-        unsafe { &mut *(0x4000 as *mut [u8; 0x4000]) }
-    }
-
-    /// aliasing rules mean we can't borrow bytes and flip at the "same" time - I think?
-    /// TODO: maybe flip returns a different framebufferguard, by consuming and returning?
-    #[inline(always)]
-    pub fn flip(&mut self, sc: &mut SystemControl) {
-        unsafe {
-            sc.mir.banking.toggle(BankFlags::FRAMEBUFFER_SELECT);
-            sc.mir.video_reg.toggle(VideoFlags::DMA_PAGE_OUT);
-            sc.scr.banking = sc.mir.banking;
-            sc.scr.video_reg = sc.mir.video_reg;
-        }
-    }
-}
-
-impl<'a> BlitterGuard<'a> {
-    #[inline(always)]
-    pub fn draw_square(
-        &mut self,
-        sc: &mut SystemControl,
-        x: u8,
-        y: u8,
-        width: u8,
-        height: u8,
-        color: u8,
-    ) {
-        sc.set_fill_mode(BlitterFillMode::Color);
-        unsafe {
-            let mut bcr = Bcr::new();
-            bcr.fb_x.write(x);
-            bcr.fb_y.write(y);
-            bcr.width.write(width);
-            bcr.height.write(height);
-            bcr.color.write(color);
-            bcr.start.write(1);
-        }
-    }
-
-    #[inline(always)]
-    pub fn draw_sprite(
-        &mut self,
-        sc: &mut SystemControl,
-        sx: u8,
-        sy: u8,
-        fb_x: u8,
-        fb_y: u8,
-        width: u8,
-        height: u8,
-    ) {
-        sc.set_fill_mode(BlitterFillMode::Sprite);
-        unsafe {
-            let mut bcr = Bcr::new();
-            bcr.vram_x.write(sx);
-            bcr.vram_y.write(sy);
-            bcr.fb_x.write(fb_x);
-            bcr.fb_y.write(fb_y);
-            bcr.width.write(width);
-            bcr.height.write(height);
-            bcr.start.write(1);
-        }
-    }
-
-    #[inline(always)]
-    pub fn wait_blit(&self) {
-        unsafe {
-            wait();
-            let mut bcr = Bcr::new();
-            bcr.start.write(0);
-        }
-    }
-}
-
 impl Console {
-    #[inline(always)]
     pub fn init() -> Self {
         // TODO: singleton-ize this?
         Self {
             sc: SystemControl::init(),
-            dma: DmaManager::new(VideoDma::DmaSprites(SpriteMem(()))),
+            dma: DmaManager::new(VideoDma::DmaSprites(SpriteMem)),
         }
     }
 }
-
-unsafe extern "C" {
-    unsafe fn _bank_shift_out(bank: u8);
-}
-
-// impl Scr {
-//     /// 0 = copy 16x16 across whole buffer
-//     pub fn set_dma_gcarry(&mut self, gcarry: bool) {
-//         unsafe {
-//             VIDEO_REG = *VIDEO_REG.set_bit(4, gcarry);
-//             (self.video_reg).write_volatile(VIDEO_REG);
-//         }
-//     }
-
-//     pub fn set_vram_bank(&mut self, bank: u8) {
-//         self.mirror.banking.update(|val| *val = *val.set_bits(0..3, bank));
-//         self.scr.banking.write(self.mirror.banking.read());
-//     }
-
-//     #[link_section = ".text.fixed"]
-//     pub unsafe fn new() -> MirroredScr {
-//         let s = MirroredScr {
-//             scr: &mut *(0x2000 as *mut Scr),
-//             mirror: Scr {
-//                 audio_reset: Volatile::new(0),
-//                 audio_nmi: Volatile::new(0),
-//                 _pad0: [0; 3], // Skips to $2005
-//                 banking: Volatile::new(8),
-//                 audio_reg: Volatile::new(0),
-//                 video_reg: Volatile::new(69), // nice
-//             }
-//         };
-
-//         s.scr.audio_reset.write(s.mirror.audio_reset.read());
-//         s.scr.audio_nmi.write(s.mirror.audio_nmi.read());
-//         s.scr.banking.write(s.mirror.banking.read());
-//         s.scr.audio_reg.write(s.mirror.audio_reg.read());
-//         s.scr.video_reg.write(s.mirror.video_reg.read());
-//         s
-//     }
-
-//     pub fn flip_framebuffer(&mut self) {
-//         self.mirror.video_reg.write(self.mirror.video_reg.read() ^ 0b00000010);
-//         self.mirror.banking.write(self.mirror.banking.read() ^ 0b00001000);
-//         self.scr.video_reg.write(self.mirror.video_reg.read());
-//         self.scr.banking.write(self.mirror.banking.read());
-//     }
-
-//     pub fn set_colorfill_mode(&mut self, enable: bool) {
-//         self.mirror.video_reg.update(|val| *val = *val.set_bit(3, enable));
-//         self.scr.video_reg.write(self.mirror.video_reg.read());
-//     }
-
-//     pub fn enable_vblank_nmi(&mut self, enable: bool) {
-//         self.mirror.video_reg.update(|val| *val = *val.set_bit(2, enable));
-//         self.scr.video_reg.write(self.mirror.video_reg.read());
-//     }
-
-//     /// set dma enabled - 0 is DMA enabled, 1 allows access to blitter commands.
-//     /// TODO correct, rename, whatever, do something to unfuck this mess.
-//     pub fn set_dma_enable(&mut self, enable: bool) {
-//         self .mirror.video_reg.update(|val| *val = *val.set_bit(0, enable));
-//         self.scr.video_reg.write(self.mirror.video_reg.read());
-//     }
-
-//     pub fn set_dma_location(&mut self, location: DmaLocation) {
-//         self.mirror.video_reg.update(|val| *val = *val.set_bit(5, location.value()));
-//         self.scr.video_reg.write(self.mirror.video_reg.read());
-//     }
-// }
