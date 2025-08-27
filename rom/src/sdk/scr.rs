@@ -87,7 +87,7 @@ pub static mut SCR_MIR: Scr = Scr {
     audio_nmi: 0,
     _pad0: [0; 3],
     banking: BankFlags::empty(),
-    audio_reg: 0x69,
+    audio_reg: 0b0_0000000,
     video_reg: VideoFlags::empty(),
 };
 
@@ -128,11 +128,18 @@ impl SystemControl {
             .set(VideoFlags::DMA_COLORFILL, mode == BlitterFillMode::Color);
         self.scr.video_reg = self.mir.video_reg;
     }
+
+    pub fn set_audio(&mut self, value: u8) {
+        self.scr.audio_reg = value;
+    }
 }
+
+
 
 pub struct Console {
     pub sc: SystemControl,
     pub dma: DmaManager,
+    pub audio: &'static mut [u8; 4096],
 }
 
 impl Console {
@@ -141,6 +148,7 @@ impl Console {
         Self {
             sc: SystemControl::init(),
             dma: DmaManager::new(VideoDma::DmaSprites(SpriteMem)),
+            audio: unsafe {&mut *(0x3000 as *mut [u8; 4096])},
         }
     }
 }

@@ -8,14 +8,14 @@ use core::ptr;
 use crate::{
     boot::{enable_irq_handler, wait},
     sdk::{
-        scr::{Console, SystemControl},
-        via::Via,
-        video_dma::blitter::BlitterGuard,
+        audio::{pitch_table::MidiNote, wavetables::{VOLUME}}, scr::{Console, SystemControl}, via::Via, video_dma::blitter::BlitterGuard
     },
 };
 
 mod boot;
 mod sdk;
+
+static AUDIOFW: &[u8; 4096] = include_bytes!("../target/audiofw.bin");
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.bank126")]
@@ -111,6 +111,11 @@ fn main(mut console: Console) {
     via.change_rom_bank(125);
     fill_sprite_quad(&mut console);
 
+    console.audio.copy_from_slice(AUDIOFW);
+    console.sc.set_audio(0xFF); // start playing audio at 14kHz
+
+    let voices = sdk::audio::wavetables::voices();
+
     // we have to track the banks ourselves :^)
     via.change_rom_bank(126);
 
@@ -130,6 +135,11 @@ fn main(mut console: Console) {
         ball.y -= (n << 0) as i8;
         ball.color += (n as u8) << 5;
     }
+
+    let mut ctr = 0u16;
+    let mut n = 0u8;
+    let mut back_volume = 16usize;
+    let mut front_volume = 16usize;
 
     loop {
         unsafe {
@@ -153,6 +163,70 @@ fn main(mut console: Console) {
 
         for ball in balls.iter().rev() {
             ball.draw(&mut console.sc, &mut blitter);
+        }
+
+        ctr += 1;
+        if ctr == 60 {
+            ctr = 0;
+            n += 1;
+        }
+
+        match n {
+            //  B C E G
+            1 => {
+                voices[0].set_tone(MidiNote::C5);
+                voices[0].set_volume(VOLUME[back_volume]);
+            }
+            2 => {
+                voices[1].set_tone(MidiNote::E5);
+                voices[1].set_volume(VOLUME[back_volume]);
+            }
+            3 => {
+                voices[2].set_tone(MidiNote::G5);
+                voices[2].set_volume(VOLUME[back_volume]);
+            }
+            4 => {
+                voices[3].set_tone(MidiNote::B5);
+                voices[3].set_volume(VOLUME[back_volume]);
+            }
+            5..6 => {
+                voices[4].set_tone(MidiNote::D6);
+                voices[4].set_volume(VOLUME[back_volume]);
+            }
+            6..10 => {
+                voices[5].set_volume(VOLUME[front_volume]);
+
+                if n == 8 {
+                    match ctr {
+                        0 => voices[5].set_tone(MidiNote::E6),
+                        20 => voices[5].set_tone(MidiNote::B5),
+                        40 => voices[5].set_tone(MidiNote::G5),
+                        _ => {}
+                    }
+                }
+
+                if back_volume <= 16 && back_volume > 0 && ctr % 16 == 0 {
+                    back_volume -= 1;
+                    
+                    voices[4].set_volume(VOLUME[back_volume]);
+                    voices[3].set_volume(VOLUME[back_volume]);
+                    voices[2].set_volume(VOLUME[back_volume]);
+                    voices[1].set_volume(VOLUME[back_volume]);
+                    voices[0].set_volume(VOLUME[back_volume]);
+                }
+            }
+            10..32 => {
+                if front_volume <= 16 && front_volume > 0 && ctr % 4 == 0 {
+                    front_volume -= 1;
+                    voices[5].set_volume(VOLUME[front_volume]);
+                    // voices[4].set_volume(VOLUME[volume]);
+                    // voices[3].set_volume(VOLUME[volume]);
+                    // voices[2].set_volume(VOLUME[volume]);
+                    // voices[1].set_volume(VOLUME[volume]);
+                    // voices[0].set_volume(VOLUME[volume]);
+                }
+            }
+            _ => {}
         }
     }
 }

@@ -42,12 +42,13 @@ impl<'a> FramebuffersGuard<'a> {
     /// aliasing rules mean we can't borrow bytes and flip at the "same" time - I think?
     /// TODO: maybe flip returns a different framebufferguard, by consuming and returning?
     #[inline(always)]
-    pub fn flip(&mut self, sc: &mut SystemControl) {
+    pub fn flip(self, sc: &mut SystemControl) -> Self {
         unsafe {
             sc.mir.banking.toggle(BankFlags::FRAMEBUFFER_SELECT);
             sc.mir.video_reg.toggle(VideoFlags::DMA_PAGE_OUT);
             sc.scr.banking = sc.mir.banking;
             sc.scr.video_reg = sc.mir.video_reg;
         }
+        self
     }
 }

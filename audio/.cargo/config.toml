@@ -12,4 +12,3 @@ build-std = ["core"]
 
 [profile.release]
 panic = "abort"
-debug = 2

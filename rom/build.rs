@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::Write, path::Path};
+use std::{env, fs::File, io::Write, path::Path, process::Command};
 
 fn main() {
     // Only run for the correct target
@@ -9,6 +9,22 @@ fn main() {
         );
         return;
     }
+
+    println!("cargo:rerun-if-changed=../audio/src/");
+    println!("cargo:rerun-if-changed=target/audiofw.bin");
+    println!("cargo:rerun-if-changed=../audio/Cargo.toml");
+
+    assert!(Command::new("cargo")
+        .args(["+mos","build","--release","-Z","build-std=core","--target","mos-unknown-none"])
+        .current_dir("../audio")
+        .status().unwrap().success());
+    println!("cargo:warning=audiofw successfully built");
+    assert!(Command::new("llvm-objcopy")
+        .args(["-O","binary",
+               "../audio/target/mos-unknown-none/release/audiofw",
+               "target/audiofw.bin"])
+        .status().unwrap().success());
+    println!("cargo:warning=Generated target/audiofw.bin");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let link_path = Path::new(&out_dir).join("linker.ld");
