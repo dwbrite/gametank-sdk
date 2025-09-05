@@ -61,62 +61,19 @@ Voice {
     frequency: 0,
     wavetable: &WAVETABLES[0],
     volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-Voice {
-    phase: 0,
-    frequency: 0,
-    wavetable: &WAVETABLES[0],
-    volume: VOLUME[0],
-},
-];
+}; 8];
 
 
-impl Voice {
-    #[inline(always)]
-    fn next_sample(&mut self) -> u8 {
-        unsafe {
-            self.phase += self.frequency;
-            let sample = *(*self.wavetable).get_unchecked((self.phase >> 8) as usize);
-            self.volume.volume(sample)
-        }
-    }
-}
+// impl Voice {
+//     #[inline(always)]
+//     fn next_sample(&mut self) -> u8 {
+//         unsafe {
+//             self.phase += self.frequency;
+//             let sample = *(*self.wavetable).get_unchecked((self.phase >> 8) as usize);
+//             self.volume.volume(sample)
+//         }
+//     }
+// }
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".const.wavetables")]

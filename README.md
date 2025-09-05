@@ -1,5 +1,5 @@
-mkdir target
-mkdir target/asm
+mkdir rom/target
+mkdir rom/target/asm
 
 ➜ podman run -d --name gametank -v $(pwd):/workspace:z --replace rust-mos:gte sleep infinity
 ➜ podman exec -it -w /workspace gametank /bin/zsh

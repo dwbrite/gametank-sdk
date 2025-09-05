@@ -174,23 +174,23 @@ fn main(mut console: Console) {
         match n {
             //  B C E G
             1 => {
-                voices[0].set_tone(MidiNote::C5);
+                voices[0].set_tone(MidiNote::C4);
                 voices[0].set_volume(VOLUME[back_volume]);
             }
             2 => {
-                voices[1].set_tone(MidiNote::E5);
+                voices[1].set_tone(MidiNote::E4);
                 voices[1].set_volume(VOLUME[back_volume]);
             }
             3 => {
-                voices[2].set_tone(MidiNote::G5);
+                voices[2].set_tone(MidiNote::G4);
                 voices[2].set_volume(VOLUME[back_volume]);
             }
             4 => {
-                voices[3].set_tone(MidiNote::B5);
+                voices[3].set_tone(MidiNote::B4);
                 voices[3].set_volume(VOLUME[back_volume]);
             }
             5..6 => {
-                voices[4].set_tone(MidiNote::D6);
+                voices[4].set_tone(MidiNote::D5);
                 voices[4].set_volume(VOLUME[back_volume]);
             }
             6..10 => {
@@ -198,9 +198,9 @@ fn main(mut console: Console) {
 
                 if n == 8 {
                     match ctr {
-                        0 => voices[5].set_tone(MidiNote::E6),
-                        20 => voices[5].set_tone(MidiNote::B5),
-                        40 => voices[5].set_tone(MidiNote::G5),
+                        0 => voices[5].set_tone(MidiNote::E5),
+                        20 => voices[5].set_tone(MidiNote::B4),
+                        40 => voices[5].set_tone(MidiNote::G4),
                         _ => {}
                     }
                 }
@@ -219,11 +219,6 @@ fn main(mut console: Console) {
                 if front_volume <= 16 && front_volume > 0 && ctr % 4 == 0 {
                     front_volume -= 1;
                     voices[5].set_volume(VOLUME[front_volume]);
-                    // voices[4].set_volume(VOLUME[volume]);
-                    // voices[3].set_volume(VOLUME[volume]);
-                    // voices[2].set_volume(VOLUME[volume]);
-                    // voices[1].set_volume(VOLUME[volume]);
-                    // voices[0].set_volume(VOLUME[volume]);
                 }
             }
             _ => {}

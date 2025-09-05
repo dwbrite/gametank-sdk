@@ -44,53 +44,27 @@ pub struct Volume {
     vol_shift: u8,
 }
 
-#[inline(always)]
-#[unsafe(no_mangle)]
-fn vol_shift0(s: u8) -> u8 { s }
-#[inline(always)]
-#[unsafe(no_mangle)]
-fn vol_shift1(s: u8) -> u8 {
-    // if s < 128 { 128 - ((128 - s) >> 1) } else { 128 + ((s - 128) >> 1) }
-    128u8.wrapping_add(((s.wrapping_sub(128)) as i8 >> 1) as u8)
-}
-#[inline(always)]
-#[unsafe(no_mangle)]
-fn vol_shift2(s: u8) -> u8 {
-    // if s < 128 { 128 - ((128 - s) >> 2) } else { 128 + ((s - 128) >> 2) }
-    128u8.wrapping_add(((s.wrapping_sub(128)) as i8 >> 2) as u8)
-}
-#[inline(always)]
-#[unsafe(no_mangle)]
-fn vol_shift3(s: u8) -> u8 {
-    // if s < 128 { 128 - ((128 - s) >> 3) } else { 128 + ((s - 128) >> 3) }
-    128u8.wrapping_add(((s.wrapping_sub(128)) as i8 >> 3) as u8)
-}
-
 impl Volume {
     #[inline(always)]
     #[unsafe(no_mangle)]
     pub fn volume(&self, sample: u8) -> u8 {
+        // sample Mult LUT 
         let sample = unsafe { *(*self.volume_ptr).get_unchecked(sample as usize) };
         let s = sample;
         
+        // re-bias towards 0 (wrapping sub maintains 2s comp for i8 conversion)
         let mut d= (s.wrapping_sub(128)) as i8;
 
         for _ in 0..self.vol_shift {
-            d >>= 1; // arithmetic right shift by 1 each time
+            d >>= 1; // divide by 2 for each vol_shift
         }
 
+        // if >= 4 shifts, you want silence
         if self.vol_shift >= 4 {
             return 128
         }
 
+        // re-bias towards 128 center - wrapping add maintains 2s comp for u8 conversion ;)
         128u8.wrapping_add(d as u8)
-
-        // match self.vol_shift {
-        //     0 => vol_shift0(s),
-        //     1 => vol_shift1(s),
-        //     2 => vol_shift2(s),
-        //     3 => vol_shift3(s),
-        //     _ => 128,
-        // }
     }
 }

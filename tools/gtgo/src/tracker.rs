@@ -1,5 +1,5 @@
 use crossbeam_channel::{Receiver, Sender};
-use ratatui::{crossterm::event::{Event, KeyCode, KeyEvent, KeyEventKind, KeyEventState, KeyModifiers}, layout::{Constraint, Direction, Layout, Rect}, style::Stylize, widgets::{Block, Borders}};
+use ratatui::{crossterm::event::{Event, KeyCode, KeyEvent, KeyModifiers}, layout::{Alignment, Constraint, Direction, Layout}, style::Stylize, widgets::{Block, Borders}};
 
 use crate::{helpers::SCHEME, main_menu::MainMenu, Component, GlobalEvent};
 
@@ -94,8 +94,15 @@ impl Component for Tracker {
             ])
             .split(frame.area());
         
-        let block1 = Block::new().bg(SCHEME.black[1]).borders(Borders::TOP).title("- Gametank GO! | ☆•° . * . ﾟTRACKER  ﾟ. * . °•☆ ").italic();
-        let block2 = Block::new().style(SCHEME.reduced_white(0));
+        let block1 = Block::new()
+            .bg(SCHEME.black[1])
+            .borders(Borders::TOP)
+            .title(" Gametank GO! | ☆•° . * . ﾟTRACKER  ﾟ. * . °•☆ ")
+            .title_alignment(Alignment::Center)
+            .italic()
+            .fg(SCHEME.orange[3]);
+
+        let block2 = Block::new().style(SCHEME.reduced_white(0));        
         
         frame.render_widget(block1.clone(), layout[0]);
         frame.render_widget(block2, layout[1]);
