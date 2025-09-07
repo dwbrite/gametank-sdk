@@ -130,7 +130,7 @@ impl QuickMenu {
 
 
 impl Component for QuickMenu {
-    fn render(&mut self, frame: &mut Frame) {
+    fn render(&mut self, frame: &mut Frame, _: Rect) {
 
         let style = SCHEME.style(Color::Rgb(36, 36, 36));
 

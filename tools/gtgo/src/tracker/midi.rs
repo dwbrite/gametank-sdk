@@ -12,4 +12,53 @@ pub enum MidiNote {
     C7, Cs7, D7, Ds7, E7, F7, Fs7, G7, Gs7, A7, As7, B7,                                     // 96..107
     C8, Cs8, D8, Ds8, E8, F8, Fs8, G8, Gs8, A8, As8, B8,                                     // 108..119
     C9, Cs9, D9, Ds9, E9, F9, Fs9, G9,                                                       // 120..127
+    None
+}
+
+impl From<u8> for MidiNote {
+    fn from(value: u8) -> Self {
+        if value <= 127 {
+            unsafe { std::mem::transmute(value) }
+        } else {
+            MidiNote::None
+        }
+    }
+}
+
+impl MidiNote {
+    pub fn to_string(&self) -> String {
+        if *self == Self::None {
+            return String::from("---")
+        }
+
+        let v = *self as u8;
+        let octave = (v / 12) as i8 - 1;
+        let (c0, c1) = match v%12 {
+            0  => ('C','-'),
+            1  => ('C','♯'),
+            2  => ('D','-'),
+            3  => ('D','♯'),
+            4  => ('E','-'),
+            5  => ('F','-'),
+            6  => ('F','♯'),
+            7  => ('G','-'),
+            8  => ('G','♯'),
+            9  => ('A','-'),
+            10 => ('A','♯'),
+            11 => ('B','-'),
+            _ => ('?', '?'),
+        };
+
+        let o = match octave {
+            -1 => "-".to_string(),
+            n => format!("{:1}", n)
+        };
+
+        let mut s = String::new();
+        s.push(c0);
+        s.push(c1);
+        s.push_str(&o);
+        
+        s
+    }
 }

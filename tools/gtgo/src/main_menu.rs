@@ -2,7 +2,7 @@ use std::{rc::Rc, time::Duration};
 
 use crossbeam_channel::Sender;
 use rat_widget::menu::{popup_menu, PopupMenu, PopupMenuState};
-use ratatui::{crossterm::event::{Event, KeyCode, KeyEvent}, layout::Alignment, style::{Color, Modifier, Style, Stylize}, symbols::border::{self}, widgets::{block::Position, Block, List, ListDirection, ListState, Widget}, Frame};
+use ratatui::{crossterm::event::{Event, KeyCode, KeyEvent}, layout::{Alignment, Rect}, style::{Color, Modifier, Style, Stylize}, symbols::border::{self}, widgets::{block::Position, Block, List, ListDirection, ListState, Widget}, Frame};
 
 use crate::{helpers::{centered_rect, SCHEME}, tracker::Tracker, ui::quickmenu::{qi, QuickMenu}, Component, GlobalEvent};
 
@@ -41,13 +41,13 @@ impl MainMenu {
 
 
 impl Component for MainMenu {
-    fn render(&mut self, frame: &mut Frame) {
+    fn render(&mut self, frame: &mut Frame, area: Rect) {
         let block = Block::bordered()
             .border_set(border::ROUNDED)
             .title("─ GameTank GO! ")
             .title_style(SCHEME.style(Color::Rgb(36, 36, 36)).italic().bold());
         block.render(frame.area(), frame.buffer_mut());
-        self.qm.render(frame);
+        self.qm.render(frame, area);
     }
     
     fn update(&mut self, events: Vec<Event>) {

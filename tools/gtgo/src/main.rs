@@ -2,9 +2,8 @@ pub mod main_menu;
 pub mod helpers;
 pub mod ui;
 pub mod tracker;
-pub mod midi;
 
-use ratatui::{crossterm::event::Event, DefaultTerminal, Frame};
+use ratatui::{crossterm::event::Event, layout::Rect, DefaultTerminal, Frame};
 use anyhow::{bail, Ok, Result};
 use crossbeam_channel::unbounded;
 
@@ -12,7 +11,7 @@ use crate::{helpers::poll_events, main_menu::MainMenu};
 
 pub trait Component {
     fn update(&mut self, events: Vec<Event>);
-    fn render(&mut self, frame: &mut Frame);
+    fn render(&mut self, frame: &mut Frame, area: Rect);
 }
 
 pub enum GlobalEvent {
@@ -31,7 +30,7 @@ impl GtGo {
         let _ = self.terminal.draw(|f| {
             let events = poll_events();
             self.state.update(events);
-            self.state.render(f); // unhandled error
+            self.state.render(f, f.area()); // unhandled error
         });
 
         for event in self.rx.try_iter() {
