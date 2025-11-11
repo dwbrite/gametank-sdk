@@ -2,6 +2,8 @@
 name = "gtgo"
 version = "0.1.0"
 edition = "2024"
+description = "gametank go! the premiere tui toolkit for gametank development"
+license = "MIT"
 
 [dependencies]
 ratatui = "0.29.0"
