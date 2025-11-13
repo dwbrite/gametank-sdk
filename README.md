@@ -1,6 +1,21 @@
-# GameTank SDK (Rust)
+What if Rust, on [GameTank](https://www.clydeshaffer.com/gametank/)?
 
-If you're here, you _probably_ know what a GameTank _is_. So let me introduce you to the Rust SDK _for_ the GameTank!
+# What?
+
+The GameTank is a retro-inspired game console running dual 6502 processors. 
+It has 128x128 composite out, with up to 200 colors. It's kind of like if Pico8 were real hardware -- 
+with real hardware limitations, and neat tricks!
+
+# Why?
+
+I like Rust, I like GameTank. What if, both?
+
+# How?
+
+Rust compiles via LLVM. There is [LLVM-MOS](https://github.com/llvm-mos/llvm-mos/blob/main/README.md), 
+which can target the 6502. Throw all that together and create some linker scripts, we _should_ have a stew.
+
+# GameTank SDK (Rust)
 
 This SDK produces 2MB GameTank ROMs (`.gtr`) to be uploaded to physical cartridges, or to be played in the emulator.
 

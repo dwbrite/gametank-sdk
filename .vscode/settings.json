@@ -3,8 +3,8 @@
     "editor.fontLigatures": true,
 
     "rust-analyzer.linkedProjects": [
-        "rom/Cargo.toml",
-        "audio/Cargo.toml",
+        "sdk/rom/Cargo.toml",
+        "sdk/audio/Cargo.toml",
         "tools/gtld/Cargo.toml",
         "tools/gtrom/Cargo.toml",
         "tools/gtgo/Cargo.toml",
