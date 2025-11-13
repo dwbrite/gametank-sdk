@@ -13,7 +13,7 @@ use crate::gametank_bus::reg_etc::{new_framebuffer, BankingRegister, BlitterFlag
 use crate::gametank_bus::reg_system_control::*;
 use crate::inputs::GamePad;
 
-const CURRENT_GAME: &[u8] = include_bytes!("../cubicle.gtr");
+const CURRENT_GAME: &[u8] = &[0; 0x2000];
 
 #[derive(Copy, Clone, Debug)]
 pub enum ByteDecorator {

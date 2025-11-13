@@ -3,3 +3,6 @@
 
 *.gtr
 *.gtrs
+
+!tools/roms/*.gtr
+!tools/roms/*.gtrs
