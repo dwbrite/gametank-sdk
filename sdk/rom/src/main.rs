@@ -180,7 +180,7 @@ fn main(mut console: Console) {
             2 => {
                 voices[1].set_tone(MidiNote::E4);
                 voices[1].set_volume(VOLUME[back_volume]);
-            }``
+            }
             3 => {
                 voices[2].set_tone(MidiNote::G4);
                 voices[2].set_volume(VOLUME[back_volume]);
