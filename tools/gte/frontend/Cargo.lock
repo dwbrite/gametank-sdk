@@ -1321,9 +1321,9 @@ dependencies = [
 
 [[package]]
 name = "gte-core"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f619813130b99f026fb3467a66d05442f1e7be2759a56b3d7ff6a6527a070e2a"
+checksum = "cc9f2c69167a79edb96944019c7124d6b02c2541aa28ced3e07927f568f7811b"
 dependencies = [
  "bit_field",
  "bitfield",
