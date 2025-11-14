@@ -4,9 +4,9 @@ version = 4
 
 [[package]]
 name = "autocfg"
-version = "1.4.0"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ace50bade8e6234aa140d9a2f552bbee1db4d353f69b8217bc503490fc1a9f26"
+checksum = "c08606f8c3cbf4ce6ec8e28fb0014a2c086708fe954eaa885384a6165172e7e8"
 
 [[package]]
 name = "bit_field"
@@ -153,12 +153,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "37ab347416e802de484e4d03c7316c48f1ecb56574dfd4a46a80f173ce1de04d"
 
 [[package]]
-name = "gte-core"
-version = "0.1.2"
+name = "gte-acp"
+version = "0.1.0"
 dependencies = [
- "bit_field",
- "bitfield",
- "bytemuck",
  "dasp_graph",
  "dasp_interpolate",
  "dasp_signal",
@@ -166,6 +163,20 @@ dependencies = [
  "heapless",
  "log",
  "petgraph",
+ "rtrb",
+]
+
+[[package]]
+name = "gte-core"
+version = "0.1.2"
+dependencies = [
+ "bit_field",
+ "bitfield",
+ "bytemuck",
+ "gte-acp",
+ "gte-w65c02s",
+ "heapless",
+ "log",
  "rand",
  "rand_core",
  "rtrb",
@@ -174,8 +185,6 @@ dependencies = [
 [[package]]
 name = "gte-w65c02s"
 version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f74b29a43a0bb0de337df619d8b44009097c2a41160e251b08d92d79d4246e7"
 
 [[package]]
 name = "hash32"

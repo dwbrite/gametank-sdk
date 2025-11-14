@@ -1,5 +1,5 @@
 [package]
-name = "rom"
+name = "rom" # rename me!
 version = "0.1.0"
 edition = "2024"
 

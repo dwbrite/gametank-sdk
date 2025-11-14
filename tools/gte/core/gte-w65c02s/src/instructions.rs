@@ -420,18 +420,18 @@ impl W65C02S {
         let val = if (self.p & P_D) != 0 {
             self.check_irq_edge();
             // am.read_spurious(system, self);
-            let mut al = (self.a & 0xF) + (red & 0xF) + if (self.p & P_C) != 0 { 1 } else { 0 };
-            if al > 9 { al = ((al + 6) & 0xF) | 0x10 }
-            let val = ((self.a as i8 as u16) & 0xFFF0) + ((red as i8 as u16) & 0xFFF0) + al as u16;
+            let mut al = (self.a & 0xF).wrapping_add(red & 0xF).wrapping_add(if (self.p & P_C) != 0 { 1 } else { 0 });
+            if al > 9 { al = ((al.wrapping_add(6)) & 0xF) | 0x10 }
+            let val = ((self.a as i8 as u16) & 0xFFF0).wrapping_add((red as i8 as u16) & 0xFFF0).wrapping_add(al as u16);
             if val >= 0x80 && val < 0xFF80 { self.p |= P_V }
             else { self.p &= !P_V }
             // *facepalm*
-            let val = (self.a as u16 & 0xF0) + (red as u16 & 0xF0) + al as u16;
-            if val > 0x9F { (val + 0x60) | 0x100 } else { val }
+            let val = (self.a as u16 & 0xF0).wrapping_add(red as u16 & 0xF0).wrapping_add(al as u16);
+            if val > 0x9F { (val.wrapping_add(0x60)) | 0x100 } else { val }
         }
         else {
-            let mut val = self.a as u16 + red as u16;
-            if (self.p & P_C) != 0 { val += 1 }
+            let mut val = (self.a as u16).wrapping_add(red as u16);
+            if (self.p & P_C) != 0 { val = val.wrapping_add(1) }
             if ((self.a ^ (val as u8)) & (red ^ (val as u8)) & 0x80) != 0 { self.p |= P_V }
             else { self.p &= !P_V }
             val
@@ -452,20 +452,20 @@ impl W65C02S {
             if ((self.a as u16 ^ val) & (red as u16 ^ 0xFF ^ val) & 0x80) != 0 { self.p |= P_V }
             else { self.p &= !P_V }
             if (val & 0x8000) != 0 {
-                val -= 0x60;
+                val = val.wrapping_sub(0x60);
                 self.p &= !P_C;
             }
             else {
                 self.p |= P_C;
             }
-            if al >= 0x80 { val -= 0x06 }
+            if al >= 0x80 { val = val.wrapping_sub(0x06) }
             self.nz_p(val as u8);
             val
         }
         else {
             let red = red ^ 0xFF;
-            let mut val = self.a as u16 + red as u16;
-            if (self.p & P_C) != 0 { val += 1 }
+            let mut val = (self.a as u16).wrapping_add(red as u16);
+            if (self.p & P_C) != 0 { val = val.wrapping_add(1) }
             if ((self.a ^ (val as u8)) & (red ^ (val as u8)) & 0x80) != 0 { self.p |= P_V }
             else { self.p &= !P_V }
             self.cnz_p(val >= 0x0100, val as u8);
@@ -478,7 +478,7 @@ impl W65C02S {
         let mut am = AM::get_operand(system, self);
         self.check_irq_edge();
         let red = am.read(system, self);
-        let val = (self.a as u16) + (red as u16 ^ 0xFF) + 1;
+        let val = (self.a as u16).wrapping_add(red as u16 ^ 0xFF).wrapping_add(1);
         self.cnz_p(val >= 0x0100, val as u8);
     }
     #[inline(always)]
@@ -486,7 +486,7 @@ impl W65C02S {
         let mut am = AM::get_operand(system, self);
         self.check_irq_edge();
         let red = am.read(system, self);
-        let val = (self.x as u16) + (red as u16 ^ 0xFF) + 1;
+        let val = (self.x as u16).wrapping_add(red as u16 ^ 0xFF).wrapping_add(1);
         self.cnz_p(val >= 0x0100, val as u8);
     }
     #[inline(always)]
@@ -494,7 +494,7 @@ impl W65C02S {
         let mut am = AM::get_operand(system, self);
         self.check_irq_edge();
         let red = am.read(system, self);
-        let val = (self.y as u16) + (red as u16 ^ 0xFF) + 1;
+        let val = (self.y as u16).wrapping_add(red as u16 ^ 0xFF).wrapping_add(1);
         self.cnz_p(val >= 0x0100, val as u8);
     }
 }

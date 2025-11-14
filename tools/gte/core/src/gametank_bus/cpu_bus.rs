@@ -4,9 +4,8 @@ use log::{debug, warn};
 use gte_w65c02s::{System, W65C02S};
 use crate::cartridges::cart2m::Cartridge2M;
 use crate::cartridges::CartridgeType;
-use crate::gametank_bus::Bus;
 use crate::gametank_bus::reg_system_control::*;
-use crate::gametank_bus::ARAM;
+use gte_acp::ARAM;
 use crate::gametank_bus::cpu_bus::ByteDecorator::{AudioRam, CpuStack, SystemRam, Unreadable, Vram, ZeroPage};
 use crate::gametank_bus::reg_blitter::{BlitStart, BlitterRegisters};
 use crate::gametank_bus::reg_etc::{new_framebuffer, BankingRegister, BlitterFlags, FrameBuffer, GraphicsMemoryMap, SharedFrameBuffer};
@@ -32,7 +31,6 @@ pub enum ByteDecorator {
 
 #[derive(Debug)]
 pub struct CpuBus {
-    cycles: u8,
     pub system_control: SystemControl,
     pub blitter: BlitterRegisters,
 
@@ -50,7 +48,6 @@ pub struct CpuBus {
 impl Default for CpuBus {
     fn default() -> Self {
         let bus = Self {
-            cycles: 0,
             system_control: SystemControl {
                 reset_acp: 0,
                 nmi_acp: 0,

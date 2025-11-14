@@ -1320,14 +1320,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "gte-core"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cc9f2c69167a79edb96944019c7124d6b02c2541aa28ced3e07927f568f7811b"
+name = "gte-acp"
+version = "0.1.0"
 dependencies = [
- "bit_field",
- "bitfield",
- "bytemuck",
  "dasp_graph",
  "dasp_interpolate",
  "dasp_signal",
@@ -1335,6 +1330,20 @@ dependencies = [
  "heapless",
  "log",
  "petgraph",
+ "rtrb",
+]
+
+[[package]]
+name = "gte-core"
+version = "0.1.2"
+dependencies = [
+ "bit_field",
+ "bitfield",
+ "bytemuck",
+ "gte-acp",
+ "gte-w65c02s",
+ "heapless",
+ "log",
  "rand",
  "rand_core",
  "rtrb",
@@ -1343,8 +1352,6 @@ dependencies = [
 [[package]]
 name = "gte-w65c02s"
 version = "0.9.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f74b29a43a0bb0de337df619d8b44009097c2a41160e251b08d92d79d4246e7"
 
 [[package]]
 name = "half"

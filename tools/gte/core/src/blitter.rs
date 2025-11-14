@@ -72,6 +72,12 @@ impl Blitter {
             self.blitting = true;
             self.cycles = 0;
 
+            // latch for first line
+            self.src_x = bus.blitter.gx;
+            self.dst_x = bus.blitter.vx;
+            self.width = bus.blitter.width & 0b01111111;
+            self.flip_x = bus.blitter.width & 0b10000000 != 0;
+
 
             debug!(target: "blitter", "starting blit from ({}, {}):({}, {}) page {} at ({}, {}); color mode {}, gcarry {}",
                 bus.blitter.gx, bus.blitter.gy,
@@ -87,10 +93,13 @@ impl Blitter {
             return
         }
 
-        self.src_x = bus.blitter.gx;
-        self.dst_x = bus.blitter.vx;
-        self.width = bus.blitter.width & 0b01111111;
-        self.flip_x = bus.blitter.width & 0b10000000 != 0;
+        // don't update params during a blit line
+        if self.offset_x == 0 {
+            self.src_y = bus.blitter.gy;
+            self.dst_y = bus.blitter.vy;
+            self.height = bus.blitter.height & 0b01111111;
+            self.flip_y = bus.blitter.height & 0b10000000 != 0;
+        }
 
         if self.offset_x >= self.width {
             self.offset_x = 0;
@@ -166,7 +175,11 @@ impl Blitter {
 
         let out_x = self.dst_x.wrapping_add(self.offset_x) as usize;
         let out_y = self.dst_y.wrapping_add(self.offset_y) as usize;
-        let out_fb = bus.system_control.banking_register.framebuffer() as usize;
+        let out_fb = if bus.system_control.get_framebuffer_out() == 1 {
+            0
+        } else {
+            1
+        };
 
         if out_x >= 128 || out_y >= 128 {
             self.offset_x = self.offset_x.wrapping_add(1);
@@ -180,18 +193,5 @@ impl Blitter {
 
         // increment x offset
         self.offset_x = self.offset_x.wrapping_add(1);
-    }
-
-    pub fn instant_blit(&mut self, bus: &mut CpuBus) {
-        // TODO:
-        // on blit start, blit until done
-        // if !self.blitting && bus.blitter.start != 0 {
-        //     loop {
-        //         self.cycle(bus);
-        //         if !self.blitting {
-        //             break;
-        //         }
-        //     }
-        // }
     }
 }

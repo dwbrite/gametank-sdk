@@ -4,6 +4,7 @@ ensure-container-running:
 
 # Compile all .asm files into .o files
 assemble-asm-files: ensure-container-running
+    mkdir -p rom/target/asm
     podman exec -t -w /workspace/rom gametank find . -name "*.asm" -exec bash -c ' \
         filename=$(basename "{}" .asm); \
         echo "Assembling $filename..."; \
@@ -34,4 +35,3 @@ build: build-asm
 # Run cargo fix with --allow-dirty
 fix:
     podman exec -t -w /workspace/rom gametank cargo +mos fix --allow-dirty --release -Z build-std=core --target mos-unknown-none
-

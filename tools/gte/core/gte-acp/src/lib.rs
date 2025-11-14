@@ -1,17 +1,20 @@
+#![no_std]
+#![allow(clippy::disallowed_methods, clippy::single_match)]
 #![allow(dead_code, unused_variables, unused_imports, internal_features, static_mut_refs)]
+extern crate alloc;
 
 use alloc::boxed::Box;
 use log::{error};
 use gte_w65c02s::{System, W65C02S};
-use crate::gametank_bus::Bus;
+
+pub mod audio_output;
 
 pub static mut ARAM: &'static mut [u8; 0x1000]  = &mut [0; 0x1000];
 
 #[derive(Default, Debug)]
 pub struct AcpBus {
-    cycles: u8,
     pub irq_counter: i32,
-
+    
     pub sample: u8,
 }
 

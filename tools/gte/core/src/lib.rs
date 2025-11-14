@@ -4,7 +4,6 @@
 extern crate alloc;
 
 use core::fmt::Debug;
-use crate::gametank_bus::Bus;
 
 pub mod color_map;
 pub mod blitter;
@@ -12,4 +11,3 @@ pub mod gametank_bus;
 pub mod cartridges;
 pub mod emulator;
 pub mod inputs;
-mod audio_output;
