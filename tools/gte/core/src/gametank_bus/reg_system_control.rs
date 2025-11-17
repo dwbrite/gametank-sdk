@@ -114,7 +114,7 @@ impl SystemControl {
                 self.read_gamepad_byte(false)
             }
             _ => {
-                warn!("Attempted to read from unreadable memory at: ${:02X}", address);
+                // warn!("Attempted to read from unreadable memory at: ${:02X}", address);
                 0
             }
         }

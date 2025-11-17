@@ -2,7 +2,7 @@ use alloc::boxed::Box;
 use core::cell::Ref;
 use log::{debug, warn};
 use gte_w65c02s::{System, W65C02S};
-use crate::cartridges::cart2m::Cartridge2M;
+use crate::cartridges::cart2mj21::Cartridge2M;
 use crate::cartridges::CartridgeType;
 use crate::gametank_bus::reg_system_control::*;
 use gte_acp::ARAM;
@@ -88,31 +88,38 @@ impl CpuBus {
         self.framebuffers[fb].borrow()
     }
 
-    fn update_flash_shift_register(&mut self, next_val: u8) {
-        match &mut self.cartridge {
-            CartridgeType::Cart2m(cartridge) => {
-                // For now, assuming that if we're using Flash2M hardware, we're behaving ourselves
-                let old_val = self.system_control.via_regs[VIA_IORA]; // Get the previous value from the VIA
-                let rising_bits = next_val & !old_val;
+    // fn update_flash_shift_register(&mut self, next_val: u8) {
+    //     match &mut self.cartridge {
+    //         CartridgeType::Cart2m(cartridge) => {
+    //             // TODO: Care about DDR bits
+    //             // For now, assuming that if we're using Flash2M hardware, we're behaving ourselves
+    //             let old_val = self.system_control.via_regs[VIA_IORA]; // Get the previous value from the VIA
+    //             let rising_bits = next_val & !old_val;
 
-                if rising_bits & VIA_SPI_BIT_CLK != 0 {
-                    cartridge.bank_shifter <<= 1; // Shift left
-                    cartridge.bank_shifter &= 0xFE; // Ensure the last bit is cleared
-                    cartridge.bank_shifter |= ((old_val & VIA_SPI_BIT_MOSI) != 0) as u8; // Set the last bit based on MOSI
-                } else if rising_bits & VIA_SPI_BIT_CS != 0 {
-                    // Flash cart CS is connected to latch clock
-                    if (cartridge.bank_mask ^ cartridge.bank_shifter as u16) & 0x80 != 0 {
-                        // TODO: support saving
-                        // self.save_nvram(); // Assuming this is defined elsewhere or is a method within CpuBus
-                        warn!("Saving is not yet supported");
-                    }
-                    cartridge.bank_mask = cartridge.bank_shifter as u16; // Update the bank mask
-                    debug!("Flash bank mask set to 0x{:x}", cartridge.bank_mask);
-                }
-            },
-            _ => {} // do nothing
-        }
-    }
+    //             if rising_bits & VIA_SPI_BIT_CLK != 0 {
+    //                 cartridge.bank_shifter <<= 1; // Shift left
+    //                 cartridge.bank_shifter &= 0xFE; // Ensure the last bit is cleared
+    //                 cartridge.bank_shifter |= ((old_val & VIA_SPI_BIT_MOSI) != 0) as u8; // Set the last bit based on MOSI
+    //             } else if rising_bits & VIA_SPI_BIT_CS != 0 {
+    //                 // Flash cart CS is connected to latch clock
+    //                 if (cartridge.bank_mask ^ cartridge.bank_shifter) & 0x80 != 0 {
+    //                     // TODO: support saving
+    //                     // self.save_nvram();
+    //                     warn!("Saving is not yet supported");
+    //                 }
+    //                 cartridge.bank_mask = cartridge.bank_shifter; // Update the bank mask
+                    
+    //                 // Check if this is NOT a FLASH2M_RAM32K type
+    //                 // For now, assuming Cart2m is the standard Flash2M type, not RAM32K variant
+    //                 // If you need to distinguish, you may need to add a variant field to Cartridge2M
+    //                 // cartridge.bank_mask |= 0x80; // Uncomment if this cart type should set bit 7
+                    
+    //                 debug!("Flash bank mask set to 0x{:x}", cartridge.bank_mask);
+    //             }
+    //         },
+    //         _ => {} // do nothing
+    //     }
+    // }
 
     pub fn write_byte(&mut self, address: u16, data: u8) {
         match address {
@@ -130,14 +137,13 @@ impl CpuBus {
 
             // versatile interface adapter (GPIO, timers)
             0x2800..=0x280F => {
+                // TODO: this is a bit hacky since the mutable via regs in "update_via" won't track changes after :/
+                let before_reg = self.system_control.via_regs.clone();
+
                 let register = (address & 0xF) as usize;
-                match (address & 0xF) as usize {
-                    VIA_IORA => {
-                        self.update_flash_shift_register(data);
-                    }
-                    _ => {}
-                }
                 self.system_control.via_regs[register] = data;
+
+                self.cartridge.update_via(&mut [before_reg, self.system_control.via_regs]);
             }
 
             // audio RAM
@@ -219,7 +225,7 @@ impl CpuBus {
                 return self.cartridge.read_byte(address - 0x8000);
             }
             _ => {
-                warn!("Attempted to inaccessible memory at: ${:02X}", address);
+                debug!("Attempted to inaccessible memory at: ${:02X}", address);
             }
         }
 

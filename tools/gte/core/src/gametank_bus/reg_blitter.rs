@@ -49,7 +49,7 @@ impl BlitterRegisters {
     pub fn read_byte(&mut self, address: u16) -> u8 {
         match address {
             0x4006 => { self.start.addressed = true; }
-            _ => warn!("Attempted to read from unreadable memory at: ${:02X}", address)
+            _ => {} //warn!("Attempted to read from unreadable memory at: ${:02X}", address)
         }
 
         0

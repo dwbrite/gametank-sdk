@@ -3,11 +3,11 @@
 pub mod cart8k;
 pub mod cart16k;
 pub mod cart32k;
-pub mod cart2m;
+pub mod cart2mj21;
 
 use alloc::boxed::Box;
 use log::error;
-use crate::cartridges::cart2m::Cartridge2M;
+use crate::cartridges::cart2mj21::Cartridge2M;
 use crate::cartridges::cart8k::Cartridge8K;
 use crate::cartridges::cart16k::Cartridge16K;
 use crate::cartridges::cart32k::{Cartridge32K};
@@ -16,6 +16,9 @@ pub trait Cartridge {
     fn from_slice(slice: &[u8]) -> Self;
     fn read_byte(&self, address: u16) -> u8;
     fn write_byte(&mut self, address: u16, data: u8) {
+        //default impl do nothing
+    }
+    fn update_via(&mut self, via: &mut [[u8; 16]; 2]) {
         //default impl do nothing
     }
 }
@@ -63,6 +66,13 @@ impl CartridgeType {
         match self {
             CartridgeType::Cart2m(c) => { c.write_byte(address, data) }
             _ => { error!("attempted write to non-writable cartridge") }
+        }
+    }
+
+    pub fn update_via(&mut self, via: &mut [[u8; 16]; 2]) {
+        match self {
+            CartridgeType::Cart2m(c) => { c.update_via(via) }
+            _ => {}
         }
     }
 }
