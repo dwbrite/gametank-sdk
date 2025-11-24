@@ -15,7 +15,7 @@ use crate::{
 mod boot;
 mod sdk;
 
-static AUDIOFW: &[u8; 4096] = include_bytes!("../target/audiofw.bin");
+static AUDIOFW: &[u8; 4096] = include_bytes!("../../audio2/build/audio2.bin");
 
 #[unsafe(no_mangle)]
 #[unsafe(link_section = ".text.bank126")]
@@ -171,57 +171,57 @@ fn main(mut console: Console) {
             n += 1;
         }
 
-        match n {
-            //  B C E G
-            1 => {
-                voices[0].set_tone(MidiNote::C4);
-                voices[0].set_volume(VOLUME[back_volume]);
-            }
-            2 => {
-                voices[1].set_tone(MidiNote::E4);
-                voices[1].set_volume(VOLUME[back_volume]);
-            }
-            3 => {
-                voices[2].set_tone(MidiNote::G4);
-                voices[2].set_volume(VOLUME[back_volume]);
-            }
-            4 => {
-                voices[3].set_tone(MidiNote::B4);
-                voices[3].set_volume(VOLUME[back_volume]);
-            }
-            5..6 => {
-                voices[4].set_tone(MidiNote::D5);
-                voices[4].set_volume(VOLUME[back_volume]);
-            }
-            6..10 => {
-                voices[5].set_volume(VOLUME[front_volume]);
+    //     match n {
+    //         //  B C E G
+    //         1 => {
+    //             voices[0].set_tone(MidiNote::C4);
+    //             voices[0].set_volume(VOLUME[back_volume]);
+    //         }
+    //         2 => {
+    //             voices[1].set_tone(MidiNote::E4);
+    //             voices[1].set_volume(VOLUME[back_volume]);
+    //         }
+    //         3 => {
+    //             voices[2].set_tone(MidiNote::G4);
+    //             voices[2].set_volume(VOLUME[back_volume]);
+    //         }
+    //         4 => {
+    //             voices[3].set_tone(MidiNote::B4);
+    //             voices[3].set_volume(VOLUME[back_volume]);
+    //         }
+    //         5..6 => {
+    //             voices[4].set_tone(MidiNote::D5);
+    //             voices[4].set_volume(VOLUME[back_volume]);
+    //         }
+    //         6..10 => {
+    //             voices[5].set_volume(VOLUME[front_volume]);
 
-                if n == 8 {
-                    match ctr {
-                        0 => voices[5].set_tone(MidiNote::E5),
-                        20 => voices[5].set_tone(MidiNote::B4),
-                        40 => voices[5].set_tone(MidiNote::G4),
-                        _ => {}
-                    }
-                }
+    //             if n == 8 {
+    //                 match ctr {
+    //                     0 => voices[5].set_tone(MidiNote::E5),
+    //                     20 => voices[5].set_tone(MidiNote::B4),
+    //                     40 => voices[5].set_tone(MidiNote::G4),
+    //                     _ => {}
+    //                 }
+    //             }
 
-                if back_volume <= 16 && back_volume > 0 && ctr % 16 == 0 {
-                    back_volume -= 1;
+    //             if back_volume <= 16 && back_volume > 0 && ctr % 16 == 0 {
+    //                 back_volume -= 1;
                     
-                    voices[4].set_volume(VOLUME[back_volume]);
-                    voices[3].set_volume(VOLUME[back_volume]);
-                    voices[2].set_volume(VOLUME[back_volume]);
-                    voices[1].set_volume(VOLUME[back_volume]);
-                    voices[0].set_volume(VOLUME[back_volume]);
-                }
-            }
-            10..32 => {
-                if front_volume <= 16 && front_volume > 0 && ctr % 4 == 0 {
-                    front_volume -= 1;
-                    voices[5].set_volume(VOLUME[front_volume]);
-                }
-            }
-            _ => {}
-        }
+    //                 voices[4].set_volume(VOLUME[back_volume]);
+    //                 voices[3].set_volume(VOLUME[back_volume]);
+    //                 voices[2].set_volume(VOLUME[back_volume]);
+    //                 voices[1].set_volume(VOLUME[back_volume]);
+    //                 voices[0].set_volume(VOLUME[back_volume]);
+    //             }
+    //         }
+    //         10..32 => {
+    //             if front_volume <= 16 && front_volume > 0 && ctr % 4 == 0 {
+    //                 front_volume -= 1;
+    //                 voices[5].set_volume(VOLUME[front_volume]);
+    //             }
+    //         }
+    //         _ => {}
+    //     }
     }
 }

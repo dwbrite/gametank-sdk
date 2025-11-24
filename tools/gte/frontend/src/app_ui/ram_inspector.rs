@@ -43,7 +43,7 @@ impl MemoryInspector {
                                 ByteDecorator::ZeroPage(b) => { (b, Color32::from_rgb(0, 0, 0)) },
                                 ByteDecorator::CpuStack(b) => { (b, Color32::from_rgb(255, 0, 0)) },
                                 ByteDecorator::SystemRam(b) => { (b, Color32::from_rgb(0, 255, 0)) },
-                                ByteDecorator::AudioRam(b) => { (b, Color32::from_rgb(0, 0, 255)) },
+                                ByteDecorator::AudioRam(b) => { (b, Color32::from_rgb(200, 255, 155)) },
                                 ByteDecorator::Vram(b) => { (b, Color32::from_rgb(255, 255, 0)) },
                                 ByteDecorator::Framebuffer(b) => { (b, Color32::from_rgb(0, 255, 255)) },
                                 ByteDecorator::Aram(b) => { (b, Color32::from_rgb(255, 0, 255)) },

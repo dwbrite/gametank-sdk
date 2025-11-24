@@ -30,7 +30,7 @@ fn main() {
     match cli.command {
         Commands::Configure { _config_file } => println!("not implemented"),
         Commands::Build {} => {
-            let _rb = RomBuilder::init("/home/dewbrite/code/personal/gametank-sdk/rom".to_string());
+            let _rb = RomBuilder::init("/home/dewbrite/code/personal/gametank-sdk/sdk/rom".to_string());
         }
     }
 }

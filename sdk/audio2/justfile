@@ -1,0 +1,19 @@
+set shell := ["zsh", "-cu"]
+
+build:
+    mkdir -p build
+    for file in *.asm; do [ -f "$file" ] && llvm-mc --filetype=obj -triple=mos -mcpu=mosw65c02 "$file" -o "build/$(basename "$file" | cut -d. -f1).o"; done
+    ld.lld -T linker.ld build/*.o -o build/audio2.elf
+    llvm-objcopy -O binary build/audio2.elf build/audio2.bin
+
+clean:
+    rm -rf build/
+
+disasm:
+    llvm-objdump -d -M intel build/audio2.elf
+
+symbols:
+    llvm-nm build/audio2.elf
+
+headers:
+    llvm-readelf -h build/audio2.elf
