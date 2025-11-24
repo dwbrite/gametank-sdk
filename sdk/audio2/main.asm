@@ -169,8 +169,7 @@ _start:
     sta VOICE_0_WAVEPTR_L
     lda #0x04
     sta VOICE_0_WAVEPTR_H
-    
-    ; Set volume to half (64 = 0x40)/2 = (32 = 0x20)
+
     lda #0x40
     sta VOICE_0_VOLUME
     

@@ -141,10 +141,30 @@ fn main(mut console: Console) {
     let mut back_volume = 16usize;
     let mut front_volume = 16usize;
 
+    let mut add = 1;
+    let mut countr = 0;
+
     loop {
         unsafe {
             wait();
         }
+
+        // countr += 1;
+
+        // if countr >= 4 {
+        //     countr = 0;
+
+        //     let mut tmp_vol = console.audio[0x47];
+        //     tmp_vol = tmp_vol.wrapping_add(add);
+        //     if tmp_vol <= 0 {
+        //         add = 1;
+        //     } if tmp_vol >= 0x40 {
+        //         add = 255;
+        //     }
+
+        //     console.audio[0x47] = tmp_vol;
+        // }
+
         if let Some(mut fb) = console.dma.framebuffers(&mut console.sc) {
             fb.flip(&mut console.sc);
         }
