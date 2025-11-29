@@ -30,7 +30,10 @@ fn main() {
     match cli.command {
         Commands::Configure { _config_file } => println!("not implemented"),
         Commands::Build {} => {
-            let _rb = RomBuilder::init("/home/dewbrite/code/personal/gametank-sdk/sdk/rom".to_string());
+            // assumes you're in the sdk/ directory
+            let working_dir = std::env::current_dir().expect("Failed to get current directory");
+            let rom_path = working_dir.join("rom");
+            let _rb = RomBuilder::init(rom_path.to_string_lossy().to_string());
         }
     }
 }

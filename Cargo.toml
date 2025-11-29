@@ -27,6 +27,11 @@ install-path = "CARGO_HOME"
 # Publish jobs to run in CI
 pr-run-mode = "plan"
 
+# System dependencies for Linux builds
+[workspace.metadata.dist.dependencies.apt]
+libasound2-dev = "*"
+libjack-jackd2-dev = "*"
+
 # The profile that 'cargo dist' will build with
 [profile.dist]
 inherits = "release"

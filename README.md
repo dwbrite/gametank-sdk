@@ -41,9 +41,38 @@ development is done in vscode (sry), and there's a `.vscode/settings.json` for t
 
 ### Windows
 
-  
+Please use WSL.
 
-~~please just install wsl, please - you'll be doing everyone a favor~~
+### Windows (WSL)
+
+> powershell:
+
+wsl.exe --install
+
+> turn it off an on again
+
+wsl.exe --install Ubuntu-22.04
+
+> enter linux shell
+
+sudo apt update
+sudo apt install podman build-essential
+podman pull docker.io/dwbrite/rust-mos:gte
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+cargo install just
+
+
+----
+
+wsl -d Ubuntu-22.04
+
+
+
+### Windows (Native)
+
+don't, just fucking don't, just dooooooon't
+
+<!-- ~~please just install wsl, please - you'll be doing everyone a favor~~
 
 
 
@@ -71,13 +100,16 @@ if you have vscode open, restart vscode completely (because windows things)
 
   
 
-finally: cry, because ballmer was right (developer experience matters, and this one is dreadful)
+finally: cry, because ballmer was right (developer experience matters, and this one is dreadful) -->
+
+
+-----
 
 
 
 
-mkdir rom/target
-mkdir rom/target/asm
+mkdir sdk/rom/target
+mkdir sdk/rom/target/asm
 
 ➜ podman run -d --name gametank -v $(pwd):/workspace:z --replace rust-mos:gte sleep infinity
 ➜ podman exec -it -w /workspace gametank /bin/zsh
