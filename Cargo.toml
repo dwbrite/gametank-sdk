@@ -36,6 +36,7 @@ pr-run-mode = "plan"
 [workspace.metadata.dist.dependencies.apt]
 libasound2-dev = "*"
 libjack-jackd2-dev = "*"
+libudev-dev = "*"
 
 # The profile that 'cargo dist' will build with
 [profile.dist]

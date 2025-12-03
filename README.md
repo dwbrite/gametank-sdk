@@ -59,7 +59,7 @@ wsl.exe --install Ubuntu-22.04
 > enter linux shell
 
 sudo apt update
-sudo apt install podman build-essential
+sudo apt install podman build-essential libasound2-dev libudev-dev
 podman pull docker.io/dwbrite/rust-mos:gte
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install just
