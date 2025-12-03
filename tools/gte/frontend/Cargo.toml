@@ -4,10 +4,17 @@ version = "0.2.1"
 edition = "2021"
 description = "gametank emulator"
 license = "MIT"
+authors = ["Devin Brite <dwbrite@gmail.com>"]
 
-# Exclude from cargo-dist releases
+# Include in cargo-dist releases
 [package.metadata.dist]
-dist = false
+dist = true
+
+[package.metadata.wix]
+upgrade-guid = "9C5D3755-53FA-44B7-BC99-FA72AE4E4159"
+path-guid = "9CC1B7BF-48AE-4B38-BF7D-850331F45389"
+license = false
+eula = false
 
 [dependencies]
 gte-core = { path = "../core" }
