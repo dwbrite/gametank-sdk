@@ -30,13 +30,16 @@ Bundled with the SDK are development tools:
 | `gtgo`  | intended to be a "one-stop-shop" for development, this tui includes tools for building |
     
 development is done in vscode (sry), and there's a `.vscode/settings.json` for the linked projects for rust analyzer.
+
+Game development is handled in the `sdk` directory
   
 
 ## Requirements
 
 
+### VSCode
 
-
+Trust Me Bro, please use a VSCode derivative for this project, or if you're 1337 you can use *vim/emacs/
   
 
 ### Windows
@@ -60,6 +63,7 @@ sudo apt install podman build-essential
 podman pull docker.io/dwbrite/rust-mos:gte
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 cargo install just
+cargo install gtsdk
 
 
 ----

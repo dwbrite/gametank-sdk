@@ -6,3 +6,5 @@
 
 !roms/*.gtr
 !roms/*.gtrs
+
+sdk/audio2/build/

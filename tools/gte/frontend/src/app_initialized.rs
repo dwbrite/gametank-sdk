@@ -304,8 +304,8 @@ impl ApplicationHandler for AppInitialized {
     }
 
     fn window_event(&mut self, event_loop: &ActiveEventLoop, window_id: WindowId, event: WindowEvent) {
-        self.process_cycles();
         self.egui_renderer.handle_input(&self.window, &event);
+        // self.process_cycles();
 
         // TODO: if playing and audio isn't init, init audio
 

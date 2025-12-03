@@ -136,34 +136,11 @@ fn main(mut console: Console) {
         ball.color += (n as u8) << 5;
     }
 
-    let mut ctr = 0u16;
-    let mut n = 0u8;
-    let mut back_volume = 16usize;
-    let mut front_volume = 16usize;
-
-    let mut add = 1;
-    let mut countr = 0;
-
     loop {
         unsafe {
             wait();
         }
 
-        // countr += 1;
-
-        // if countr >= 4 {
-        //     countr = 0;
-
-        //     let mut tmp_vol = console.audio[0x47];
-        //     tmp_vol = tmp_vol.wrapping_add(add);
-        //     if tmp_vol <= 0 {
-        //         add = 1;
-        //     } if tmp_vol >= 0x40 {
-        //         add = 255;
-        //     }
-
-        //     console.audio[0x47] = tmp_vol;
-        // }
 
         if let Some(mut fb) = console.dma.framebuffers(&mut console.sc) {
             fb.flip(&mut console.sc);
@@ -184,64 +161,5 @@ fn main(mut console: Console) {
         for ball in balls.iter().rev() {
             ball.draw(&mut console.sc, &mut blitter);
         }
-
-        ctr += 1;
-        if ctr == 60 {
-            ctr = 0;
-            n += 1;
-        }
-
-    //     match n {
-    //         //  B C E G
-    //         1 => {
-    //             voices[0].set_tone(MidiNote::C4);
-    //             voices[0].set_volume(VOLUME[back_volume]);
-    //         }
-    //         2 => {
-    //             voices[1].set_tone(MidiNote::E4);
-    //             voices[1].set_volume(VOLUME[back_volume]);
-    //         }
-    //         3 => {
-    //             voices[2].set_tone(MidiNote::G4);
-    //             voices[2].set_volume(VOLUME[back_volume]);
-    //         }
-    //         4 => {
-    //             voices[3].set_tone(MidiNote::B4);
-    //             voices[3].set_volume(VOLUME[back_volume]);
-    //         }
-    //         5..6 => {
-    //             voices[4].set_tone(MidiNote::D5);
-    //             voices[4].set_volume(VOLUME[back_volume]);
-    //         }
-    //         6..10 => {
-    //             voices[5].set_volume(VOLUME[front_volume]);
-
-    //             if n == 8 {
-    //                 match ctr {
-    //                     0 => voices[5].set_tone(MidiNote::E5),
-    //                     20 => voices[5].set_tone(MidiNote::B4),
-    //                     40 => voices[5].set_tone(MidiNote::G4),
-    //                     _ => {}
-    //                 }
-    //             }
-
-    //             if back_volume <= 16 && back_volume > 0 && ctr % 16 == 0 {
-    //                 back_volume -= 1;
-                    
-    //                 voices[4].set_volume(VOLUME[back_volume]);
-    //                 voices[3].set_volume(VOLUME[back_volume]);
-    //                 voices[2].set_volume(VOLUME[back_volume]);
-    //                 voices[1].set_volume(VOLUME[back_volume]);
-    //                 voices[0].set_volume(VOLUME[back_volume]);
-    //             }
-    //         }
-    //         10..32 => {
-    //             if front_volume <= 16 && front_volume > 0 && ctr % 4 == 0 {
-    //                 front_volume -= 1;
-    //                 voices[5].set_volume(VOLUME[front_volume]);
-    //             }
-    //         }
-    //         _ => {}
-    //     }
     }
 }

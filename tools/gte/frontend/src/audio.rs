@@ -1,22 +1,52 @@
-use std::collections::VecDeque;
-use std::ops::IndexMut;
-use dasp_graph::{Buffer, Input, NodeData};
-use klingt::{AudioNode, Klingt};
+use dasp_graph::{Buffer, Input};
+use klingt::{AudioNode, Handle, Klingt, ProcessContext};
 use rtrb::{Consumer, Producer, RingBuffer};
-use tracing::{debug, info, trace, warn};
-use petgraph::prelude::NodeIndex;
-use klingt::nodes::sink::CpalMonoSink; // adjust path if different in your klingt version
+use tracing::warn;
 
-#[derive(Debug)]
+/// A source node that reads audio buffers from an rtrb ring buffer
 pub struct RtrbSource {
     output_buffer: Consumer<Buffer>,
 }
 
+/// Message type for RtrbSource (no messages needed)
+#[derive(Clone, Copy, Debug)]
+pub enum RtrbSourceMessage {}
+
+impl AudioNode for RtrbSource {
+    type Message = RtrbSourceMessage;
+
+    fn process(
+        &mut self,
+        _ctx: &ProcessContext,
+        _messages: impl Iterator<Item = RtrbSourceMessage>,
+        _inputs: &[Input],
+        outputs: &mut [Buffer],
+    ) {
+        // Fill output buffer by popping from the emulator consumer.
+        // If no data available, output silence.
+        if let Some(output) = outputs.first_mut() {
+            match self.output_buffer.pop() {
+                Ok(buf) => {
+                    *output = buf;
+                }
+                Err(_) => {
+                    // no data available from emulator -> silence
+                    *output = Buffer::SILENT;
+                }
+            }
+        }
+    }
+
+    fn num_outputs(&self) -> usize {
+        1
+    }
+}
+
 pub struct GameTankAudio {
-    klingt: Klingt<GTNode>,
-    idx_in: NodeIndex,
-    idx_out: NodeIndex,
-    producer: Producer<Buffer>, // internal producer we push emulator data into
+    klingt: Klingt,
+    #[allow(dead_code)]
+    source_handle: Handle<RtrbSourceMessage>,
+    producer: Producer<Buffer>,
 }
 
 impl GameTankAudio {
@@ -24,31 +54,23 @@ impl GameTankAudio {
     /// The emulator run loop should pop from its own buffer and push into this `producer`
     /// via `push_buffer`.
     pub fn new() -> Self {
-        let mut klingt = Klingt::default();
+        let mut klingt = Klingt::default_output().expect("No audio device available");
 
-        // create an internal ring buffer where the UI/bridge reads from the consumer
+        // create an internal ring buffer where the source reads from the consumer
         // and the app will push emulator buffers into the producer
         let (producer, consumer) = RingBuffer::<Buffer>::new(2048);
 
-        // Create sink node
-        let sink = CpalMonoSink::default();
-        let out_node = NodeData::new1(GTNode::CpalMonoSink(sink));
-
         // Create source node that will read from our internal consumer
-        let gt_node = NodeData::new1(GTNode::GameTankSource(RtrbSource {
+        let source = RtrbSource {
             output_buffer: consumer,
-        }));
+        };
 
-        let idx_in = klingt.add_node(gt_node);
-        let idx_out = klingt.add_node(out_node);
-
-        // route source -> sink
-        klingt.add_edge(idx_in, idx_out, ());
+        let source_handle = klingt.add(source);
+        klingt.output(&source_handle);
 
         Self {
             klingt,
-            idx_in,
-            idx_out,
+            source_handle,
             producer,
         }
     }
@@ -61,58 +83,8 @@ impl GameTankAudio {
         }
     }
 
-    /// Process audio until either sink can't accept a block or source has no data.
-    /// Call regularly from your audio thread / main loop.
+    /// Process audio. Call regularly from your main loop.
     pub fn process_audio(&mut self) {
-        // debug/log the state so we can see why nothing flows
-        let ready_to_output = if let GTNode::GameTankSource(src) = &mut self.klingt.index_mut(self.idx_in).node {
-            src.output_buffer.slots()
-        } else { 0 };
-        let sink_slots = if let GTNode::CpalMonoSink(sink) = &mut self.klingt.index_mut(self.idx_out).node {
-            sink.buffer.slots()
-        } else { 0 };
-
-        let mut ready_to_output = ready_to_output;
-        let mut can_output = sink_slots >= 128 && ready_to_output >= 1;
-
-        while can_output {
-            self.klingt.processor.process(&mut self.klingt.graph, self.idx_out);
-
-            if let GTNode::GameTankSource(src) = &mut self.klingt.index_mut(self.idx_in).node {
-                ready_to_output = src.output_buffer.slots();
-            }
-            if let GTNode::CpalMonoSink(sink) = &mut self.klingt.index_mut(self.idx_out).node {
-                can_output = sink.buffer.slots() >= 128 && ready_to_output >= 1;
-            };
-        }
+        self.klingt.process();
     }
-}
-
-impl AudioNode for RtrbSource {
-    fn process(&mut self, _inputs: &[Input], output: &mut [Buffer]) {
-        // Fill each output buffer slot by popping from the emulator consumer.
-        // If the emulator has fewer buffers than 'output.len()', fill remaining with SILENT.
-        let mut i = 0usize;
-        while i < output.len() {
-            match self.output_buffer.pop() {
-                Ok(buf) => {
-                    output[i] = buf.clone();
-                    i += 1;
-                }
-                Err(_) => {
-                    // no more data available from emulator -> silence the rest
-                    for out in output[i..].iter_mut() {
-                        *out = Buffer::SILENT;
-                    }
-                    return;
-                }
-            }
-        }
-    }
-}
-
-#[enum_delegate::implement(AudioNode, pub trait AudioNode { fn process(&mut self, inputs: &[Input], output: &mut [Buffer]);})]
-pub enum GTNode {
-    CpalMonoSink(CpalMonoSink),
-    GameTankSource(RtrbSource),
 }
