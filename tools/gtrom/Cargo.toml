@@ -1,6 +1,6 @@
 [package]
 name = "gtrom"
-version = "0.10.0"
+version = "0.10.1"
 edition = "2024"
 description = "gametank rom management tool"
 license = "MIT"

@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "gametank-libretro"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "gte-core",
  "libretro-rs",
@@ -1750,7 +1750,7 @@ dependencies = [
 
 [[package]]
 name = "gte"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "console_error_panic_hook",
  "dasp_graph",
@@ -1782,7 +1782,7 @@ dependencies = [
 
 [[package]]
 name = "gte-acp"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "dasp_graph",
  "dasp_interpolate",
@@ -1796,7 +1796,7 @@ dependencies = [
 
 [[package]]
 name = "gte-core"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "bit_field",
  "bitfield",
@@ -1812,11 +1812,11 @@ dependencies = [
 
 [[package]]
 name = "gte-w65c02s"
-version = "0.10.0"
+version = "0.10.1"
 
 [[package]]
 name = "gtgo"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "anyhow",
  "crossbeam-channel",
@@ -1828,7 +1828,7 @@ dependencies = [
 
 [[package]]
 name = "gtld"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "anyhow",
  "crc32fast",
@@ -1840,7 +1840,7 @@ dependencies = [
 
 [[package]]
 name = "gtrom"
-version = "0.10.0"
+version = "0.10.1"
 dependencies = [
  "clap 4.5.53",
  "elf",
