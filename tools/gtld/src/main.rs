@@ -114,11 +114,11 @@ fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>) -> anyhow::Res
     let path = file.ok_or_else(|| anyhow::anyhow!("No file provided"))?;
     let rom_buffer = fs::read(&path)?;
 
-    read_output(port);
+    read_output(port, true);
 
     port.write_all(b"mode f\r").expect("write data failed");
     port.flush().ok();
-    wait_for_str(port, "FLASH");
+    wait_for_str(port, "FLASH", true);
 
     write_all(port, rom_buffer);
 
@@ -127,17 +127,23 @@ fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>) -> anyhow::Res
     Ok("go check it".to_string())
 }
 
-pub fn read_output(port: &mut Box<dyn SerialPort>) -> [u8; 1024] {
+pub fn read_output(port: &mut Box<dyn SerialPort>, print: bool) -> [u8; 1024] {
     // Read whatever's there
     let mut buf = [0u8; 1024];
     match port.read(&mut buf) {
         Ok(n) if n > 0 => {
-            let line = String::from_utf8_lossy(&buf[..n]);
-            let mut styled = style(&line).dim();
-            if line.contains(">") {
-                styled = styled.italic();
+            if print {
+                // Only print if fully printable ASCII and reasonably short
+                let is_printable = buf[..n].iter().all(|&b| (b >= 0x20 && b < 0x7F) || b == b'\r' || b == b'\n' || b == b'\t');
+                if is_printable && n < 256 {
+                    let line = String::from_utf8_lossy(&buf[..n]);
+                    let mut styled = style(&line).dim();
+                    if line.contains(">") {
+                        styled = styled.italic();
+                    }
+                    println!("{}", styled);
+                }
             }
-            println!("{}", styled);
         }
         _ => panic!("Waited too long for output"),
     }
@@ -152,7 +158,7 @@ pub fn write_bank(port: &mut Box<dyn SerialPort>, bank: u8, data: &[u8]) {
     port.write_all(format!("shift {:X}\r", bank).as_bytes())
         .expect("Failed to write bank");
     port.flush().ok();
-    read_output(port);
+    read_output(port, false);
 
     let chunks = data.len() / 4096;
 
@@ -174,12 +180,12 @@ pub fn write_bank(port: &mut Box<dyn SerialPort>, bank: u8, data: &[u8]) {
 
         sleep(Duration::from_millis(20));
 
-        wait_for_str(port, "ACK");
+        wait_for_str(port, "ACK", false);
     }
 
     port.write_all("checksum 0 4000\r".as_bytes())
         .expect("failed to get checksum");
-    let checksum = wait_for_str(port, "CRC32");
+    let checksum = wait_for_str(port, "CRC32", true);
 
     if checksum.contains(&format!("{:X}", crc32_in)) {
         println!("{}", style("Checksum valid").green());
@@ -188,7 +194,7 @@ pub fn write_bank(port: &mut Box<dyn SerialPort>, bank: u8, data: &[u8]) {
     }
 }
 
-fn wait_for_str(port: &mut Box<dyn SerialPort>, contains: &str) -> String {
+fn wait_for_str(port: &mut Box<dyn SerialPort>, contains: &str, print: bool) -> String {
     let mut buf = Vec::new();
     let mut byte = [0u8; 1];
 
@@ -197,11 +203,18 @@ fn wait_for_str(port: &mut Box<dyn SerialPort>, contains: &str) -> String {
             Ok(1) => {
                 if byte[0] == b'\n' {
                     let line = String::from_utf8_lossy(&buf);
-                    let mut styled = style(&line).dim();
-                    if line.contains(">") {
-                        styled = styled.italic();
+                    
+                    if print {
+                        // Only print lines that are fully printable ASCII and reasonably short
+                        let is_printable = buf.iter().all(|&b| (b >= 0x20 && b < 0x7F) || b == b'\r' || b == b'\t');
+                        if is_printable && buf.len() < 256 {
+                            let mut styled = style(&line).dim();
+                            if line.contains(">") {
+                                styled = styled.italic();
+                            }
+                            println!("{}", styled);
+                        }
                     }
-                    println!("{}", styled);
 
                     if line.contains(contains) {
                         return line.to_string();
@@ -258,17 +271,17 @@ pub fn flash_optiboot_da(port: &str, firmware_path: &str) {
 pub fn dump(port: &mut Box<dyn SerialPort>) {
     let mut data = Vec::<[u8; 1024]>::new();
 
-    read_output(port);
+    read_output(port, true);
 
     for bank in 0..128*4 {
         let dump_cmd = format!("dump {:04X} 1000\r", bank * 4096);
         port.write_all(dump_cmd.as_bytes()).expect("dump failed");
         port.flush().ok();
-        let pt = read_output(port);
+        let pt = read_output(port, false);
         data.push(pt);
     }
 
-    read_output(port);
+    read_output(port, true);
 }
 
 pub fn write_all(port: &mut Box<dyn SerialPort>, data: Vec<u8>) {
@@ -284,11 +297,11 @@ pub fn write_all(port: &mut Box<dyn SerialPort>, data: Vec<u8>) {
 
     port.write_all(b"reset\r").expect("reset failed");
     port.flush().ok();
-    wait_for_str(port, "OK");
+    wait_for_str(port, "OK", true);
 
     port.write_all(b"eraseChip\r").expect("erase failed");
     port.flush().ok();
-    wait_for_str(port, "Done");
+    wait_for_str(port, "Done", true);
 
     for (idx, shifted_bank) in (first_bank..128).enumerate() {
         let start = idx * 16384;
