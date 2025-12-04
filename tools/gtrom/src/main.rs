@@ -95,7 +95,7 @@ fn do_build(release: bool) -> Result<PathBuf, String> {
         cargo_build(&rom_dir_str, release)?;
     } else {
         // Orchestrate from outside container
-        let workspace_root = ensure_container()?;
+        let (workspace_root, _runtime) = ensure_container()?;
         build_asm_in_container(&rom_dir, &workspace_root)?;
         cargo_build_in_container(&rom_dir, &workspace_root, release)?;
     }

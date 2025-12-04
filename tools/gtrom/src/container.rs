@@ -1,9 +1,37 @@
 //! Container orchestration for builds
 //! 
-//! Manages the podman container lifecycle for llvm-mos toolchain access.
+//! Manages the podman/docker container lifecycle for llvm-mos toolchain access.
 
 use std::path::Path;
 use std::process::Command;
+
+/// Container runtime to use
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum ContainerRuntime {
+    Podman,
+    Docker,
+}
+
+impl ContainerRuntime {
+    /// Detect which container runtime is available
+    pub fn detect() -> Option<Self> {
+        // Prefer podman over docker
+        if Command::new("podman").arg("--version").output().is_ok() {
+            return Some(Self::Podman);
+        }
+        if Command::new("docker").arg("--version").output().is_ok() {
+            return Some(Self::Docker);
+        }
+        None
+    }
+    
+    fn as_str(&self) -> &'static str {
+        match self {
+            Self::Podman => "podman",
+            Self::Docker => "docker",
+        }
+    }
+}
 
 /// Check if we're running inside a container
 pub fn is_in_container() -> bool {
@@ -43,27 +71,38 @@ pub fn find_workspace_root() -> Result<std::path::PathBuf, String> {
 }
 
 /// Ensure the build container is running
-pub fn ensure_container() -> Result<std::path::PathBuf, String> {
+pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), String> {
+    let runtime = ContainerRuntime::detect()
+        .ok_or_else(|| "No container runtime found. Please install podman or docker.".to_string())?;
+    
     let workspace_root = find_workspace_root()?;
+    let cmd = runtime.as_str();
     
     // Check if container is already running
-    let output = Command::new("podman")
+    let output = Command::new(cmd)
         .args(["ps", "--filter", "name=gametank", "--filter", "status=running", "--format", "{{.Names}}"])
         .output()
         .map_err(|e| format!("Failed to check container status: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if stdout.contains("gametank") {
-        return Ok(workspace_root);
+        return Ok((workspace_root, runtime));
     }
 
     // Start the container
-    println!("Starting build container...");
-    let status = Command::new("podman")
+    println!("Starting build container with {}...", cmd);
+    
+    // Build volume mount arg - podman uses :z for SELinux, docker doesn't need it
+    let volume_arg = match runtime {
+        ContainerRuntime::Podman => format!("{}:/workspace:z", workspace_root.display()),
+        ContainerRuntime::Docker => format!("{}:/workspace", workspace_root.display()),
+    };
+    
+    let status = Command::new(cmd)
         .args([
             "run", "-d",
             "--name", "gametank",
-            "-v", &format!("{}:/workspace:z", workspace_root.display()),
+            "-v", &volume_arg,
             "--replace",
             "rust-mos:gte",
             "sleep", "infinity"
@@ -72,15 +111,16 @@ pub fn ensure_container() -> Result<std::path::PathBuf, String> {
         .map_err(|e| format!("Failed to start container: {}", e))?;
 
     if status.success() {
-        Ok(workspace_root)
+        Ok((workspace_root, runtime))
     } else {
         Err("Failed to start build container".to_string())
     }
 }
 
 /// Execute a command inside the container
-pub fn podman_exec(workdir: &str, args: &[&str]) -> Result<(), String> {
-    let status = Command::new("podman")
+pub fn container_exec(runtime: ContainerRuntime, workdir: &str, args: &[&str]) -> Result<(), String> {
+    let cmd = runtime.as_str();
+    let status = Command::new(cmd)
         .args(["exec", "-t", "-w", workdir, "gametank"])
         .args(args)
         .status()
@@ -91,4 +131,11 @@ pub fn podman_exec(workdir: &str, args: &[&str]) -> Result<(), String> {
     } else {
         Err(format!("Command failed: {:?}", args))
     }
+}
+
+/// Execute a command inside the container (convenience wrapper that detects runtime)
+pub fn podman_exec(workdir: &str, args: &[&str]) -> Result<(), String> {
+    let runtime = ContainerRuntime::detect()
+        .ok_or_else(|| "No container runtime found".to_string())?;
+    container_exec(runtime, workdir, args)
 }

@@ -260,7 +260,7 @@ pub fn do_audio_build(path_str: &str) -> Result<(), String> {
         }
     } else {
         // Orchestrate from outside container - run llvm commands via podman exec
-        let workspace_root = ensure_container()?;
+        let (workspace_root, _runtime) = ensure_container()?;
         
         if path.join("Cargo.toml").exists() {
             // TODO: Rust audio build via container

@@ -133,19 +133,39 @@ pub fn read_output(port: &mut Box<dyn SerialPort>, print: bool) -> [u8; 1024] {
     match port.read(&mut buf) {
         Ok(n) if n > 0 => {
             if print {
-                // Only print if fully printable ASCII and reasonably short
-                let is_printable = buf[..n].iter().all(|&b| (b >= 0x20 && b < 0x7F) || b == b'\r' || b == b'\n' || b == b'\t');
-                if is_printable && n < 256 {
-                    let line = String::from_utf8_lossy(&buf[..n]);
-                    let mut styled = style(&line).dim();
-                    if line.contains(">") {
+                // Sanitize output: replace non-printable chars with '.'
+                let sanitized: String = buf[..n]
+                    .iter()
+                    .map(|&b| {
+                        if (b >= 0x20 && b < 0x7F) || b == b'\n' {
+                            b as char
+                        } else if b == b'\r' || b == b'\t' {
+                            ' '
+                        } else {
+                            '.'
+                        }
+                    })
+                    .collect();
+                
+                // Only print if it has some meaningful content
+                if sanitized.trim().len() > 0 && n < 256 {
+                    let mut styled = style(&sanitized).dim();
+                    if sanitized.contains(">") {
                         styled = styled.italic();
                     }
                     println!("{}", styled);
                 }
             }
         }
-        _ => panic!("Waited too long for output"),
+        Ok(_) => {
+            // No data read, that's fine
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::TimedOut => {
+            // Timeout is expected sometimes, not a panic
+        }
+        Err(_) => {
+            eprintln!("Warning: error reading from serial port");
+        }
     }
     port.flush().ok();
 
@@ -205,11 +225,23 @@ fn wait_for_str(port: &mut Box<dyn SerialPort>, contains: &str, print: bool) -> 
                     let line = String::from_utf8_lossy(&buf);
                     
                     if print {
-                        // Only print lines that are fully printable ASCII and reasonably short
-                        let is_printable = buf.iter().all(|&b| (b >= 0x20 && b < 0x7F) || b == b'\r' || b == b'\t');
-                        if is_printable && buf.len() < 256 {
-                            let mut styled = style(&line).dim();
-                            if line.contains(">") {
+                        // Sanitize output: replace non-printable chars
+                        let sanitized: String = buf
+                            .iter()
+                            .map(|&b| {
+                                if b >= 0x20 && b < 0x7F {
+                                    b as char
+                                } else if b == b'\r' || b == b'\t' {
+                                    ' '
+                                } else {
+                                    '.'
+                                }
+                            })
+                            .collect();
+                        
+                        if sanitized.trim().len() > 0 && buf.len() < 256 {
+                            let mut styled = style(&sanitized).dim();
+                            if sanitized.contains(">") {
                                 styled = styled.italic();
                             }
                             println!("{}", styled);
