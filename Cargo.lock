@@ -1624,7 +1624,6 @@ dependencies = [
  "futures",
  "gloo-timers",
  "gte-core",
- "gtrom",
  "image",
  "indexmap 2.12.1",
  "klingt",
@@ -1798,38 +1797,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "gte"
-version = "0.10.1"
-dependencies = [
- "console_error_panic_hook",
- "dasp_graph",
- "egui",
- "egui-wgpu",
- "egui-winit",
- "egui_extras",
- "futures",
- "gloo-timers",
- "gte-core",
- "image",
- "klingt",
- "lab",
- "lazy_static",
- "once_cell",
- "pollster",
- "rtrb",
- "thread-priority",
- "tracing",
- "tracing-subscriber",
- "tracing-wasm",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "wee_alloc",
- "wgpu",
- "winit",
-]
-
-[[package]]
 name = "gte-acp"
 version = "0.10.1"
 dependencies = [
@@ -1862,42 +1829,6 @@ dependencies = [
 [[package]]
 name = "gte-w65c02s"
 version = "0.10.1"
-
-[[package]]
-name = "gtgo"
-version = "0.10.1"
-dependencies = [
- "anyhow",
- "crossbeam-channel",
- "indexmap 2.12.1",
- "rat-theme",
- "rat-widget",
- "ratatui",
-]
-
-[[package]]
-name = "gtld"
-version = "0.10.1"
-dependencies = [
- "anyhow",
- "crc32fast",
- "dialoguer",
- "serialport",
- "structopt",
- "tempfile",
-]
-
-[[package]]
-name = "gtrom"
-version = "0.10.1"
-dependencies = [
- "clap 4.5.53",
- "elf",
- "flate2",
- "rustc-demangle",
- "tar",
- "tempfile",
-]
 
 [[package]]
 name = "half"

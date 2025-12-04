@@ -2,15 +2,11 @@
 resolver = "2"
 
 members = [
-    "tools/gtld",
-    "tools/gtgo",
-    "tools/gtrom",
+    "tools",
     "tools/gte/core",
     "tools/gte/core/gte-acp",
     "tools/gte/core/gte-w65c02s",
-    "tools/gte/frontend",
     "tools/gte/libretro",
-    "tools/gametank-sdk"
 ]
 
 exclude = [

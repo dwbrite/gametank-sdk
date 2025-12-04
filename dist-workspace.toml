@@ -1,5 +1,5 @@
 [workspace]
-members = ["cargo:tools/gametank-sdk"]
+members = ["cargo:tools"]
 
 # Config for 'dist'
 [dist]

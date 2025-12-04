@@ -2,17 +2,24 @@
 //!
 //! A unified CLI for building, running, and managing GameTank ROM projects.
 
+mod asm;
+mod audio;
+mod cargo;
+mod container;
+mod init;
+mod rom_builder;
+
 use std::path::PathBuf;
 use std::process::Command;
 
 use clap::{Parser, Subcommand};
 
-use gtrom::asm::{build_asm, build_asm_in_container};
-use gtrom::audio::do_audio_build;
-use gtrom::cargo::{cargo_build, cargo_build_in_container, find_rom_dir, get_crate_name};
-use gtrom::container::{ensure_container, is_in_container};
-use gtrom::init::do_init;
-use gtrom::rom_builder::RomBuilder;
+use crate::asm::{build_asm, build_asm_in_container};
+use crate::audio::do_audio_build;
+use crate::cargo::{cargo_build, cargo_build_in_container, find_rom_dir, get_crate_name};
+use crate::container::{ensure_container, is_in_container};
+use crate::init::do_init;
+use crate::rom_builder::RomBuilder;
 
 #[derive(Parser)]
 #[command(name = "gtrom")]
