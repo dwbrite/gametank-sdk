@@ -3,15 +3,6 @@
 version = 4
 
 [[package]]
-name = "audiofw"
-version = "0.1.0"
-dependencies = [
- "bit_field",
- "bitflags",
- "volatile-register",
-]
-
-[[package]]
 name = "bit_field"
 version = "0.10.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -27,7 +18,6 @@ checksum = "34efbcccd345379ca2868b2b2c9d3782e9cc58ba87bc7d79d5b53d9c9ae6f25d"
 name = "rom"
 version = "0.1.0"
 dependencies = [
- "audiofw",
  "bit_field",
  "bitflags",
  "volatile-register",

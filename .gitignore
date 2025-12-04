@@ -6,5 +6,6 @@
 
 !roms/*.gtr
 !roms/*.gtrs
+!examples/**/*.gtr
 
-sdk/audio2/build/
+sdk/audiofw-src/**/build/

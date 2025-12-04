@@ -69,12 +69,11 @@ impl ElfSection {
 pub struct RomBuilder {}
 
 impl RomBuilder {
-    pub fn init(path: String) -> Self {
-        let mut newpath = path.clone();
-        newpath.push_str("/target/mos-unknown-none/release/rom");
-        let file_data = std::fs::read(newpath).expect("Could not read file.");
+    /// Build a .gtr ROM from an ELF file
+    pub fn build(elf_path: String, output_path: String) -> Self {
+        let file_data = std::fs::read(&elf_path).expect("Could not read ELF file.");
         let slice = file_data.as_slice();
-        let file = ElfBytes::<AnyEndian>::minimal_parse(slice).expect("Open test1");
+        let file = ElfBytes::<AnyEndian>::minimal_parse(slice).expect("Failed to parse ELF");
         let elf = &file;
 
         // 128 banks
@@ -122,9 +121,11 @@ impl RomBuilder {
             );
         }
 
-        let mut file = File::create("balls.gtr").unwrap();
+        let mut file = File::create(&output_path).expect("Failed to create output file");
         let flat: &[u8; 2 * 1024 * 1024] = unsafe { core::mem::transmute(&rom) };
-        file.write_all(flat).unwrap();
+        file.write_all(flat).expect("Failed to write ROM data");
+
+        println!("Created: {}", output_path);
 
         Self {}
     }

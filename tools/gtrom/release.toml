@@ -1,0 +1,9 @@
+# cargo-release configuration for gtrom
+# The pre-release-hook rebuilds the SDK tarball before publishing
+
+pre-release-hook = ["tar", "-czf", "sdk-template.tar.gz", "-C", "../..", "--exclude=*/target", "--exclude=*.gtr", "sdk"]
+
+# Let cargo-dist handle GitHub releases
+push = true
+tag = true
+publish = true
