@@ -21,8 +21,8 @@ install-updater = false
 tap = "dwbrite/tap"
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
-# Whether to run otherwise-parallelizable tasks on the same machine
-merge-tasks = true
+# A prefix git tags must include for dist to care about them
+tag-namespace = "gametank-sdk"
 
 # System dependencies for Linux builds
 [dist.dependencies.apt]
