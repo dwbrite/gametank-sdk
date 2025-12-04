@@ -9,9 +9,9 @@ authors = ["Devin Brite <dwbrite@gmail.com>"]
 description = "GameTank Loader! For loading gametank roms onto 2M Flash cartridges using the Gametank Cartridge Programmer v4"
 license = "MIT"
 
-# Include this package in cargo-dist releases
+# Exclude from cargo-dist (use gametank-sdk unified package instead)
 [package.metadata.dist]
-dist = true
+dist = false
 
 [package.metadata.wix]
 upgrade-guid = "FB13917F-DCF3-4CF2-8F07-C0419D477E99"

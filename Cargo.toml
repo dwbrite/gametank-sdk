@@ -10,6 +10,7 @@ members = [
     "tools/gte/core/gte-w65c02s",
     "tools/gte/frontend",
     "tools/gte/libretro",
+    "tools/gametank-sdk"
 ]
 
 exclude = [

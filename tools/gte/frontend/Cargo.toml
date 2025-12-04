@@ -8,9 +8,9 @@ description = "gametank emulator"
 license = "MIT"
 authors = ["Devin Brite <dwbrite@gmail.com>"]
 
-# Include in cargo-dist releases
+# Exclude from cargo-dist (use gametank-sdk unified package instead)
 [package.metadata.dist]
-dist = true
+dist = false
 
 [package.metadata.wix]
 upgrade-guid = "9C5D3755-53FA-44B7-BC99-FA72AE4E4159"

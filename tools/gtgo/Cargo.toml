@@ -8,6 +8,10 @@ authors = ["Devin Brite <dwbrite@gmail.com>"]
 homepage = "https://github.com/dwbrite/gametank-sdk"
 repository = "https://github.com/dwbrite/gametank-sdk"
 
+# Exclude from cargo-dist (use gametank-sdk unified package instead)
+[package.metadata.dist]
+dist = false
+
 [package.metadata.wix]
 upgrade-guid = "079CDE5A-C4A4-464C-98F6-A2ADE69AF153"
 path-guid = "93E42FA9-B24C-4199-A159-E1AACD13C38A"
