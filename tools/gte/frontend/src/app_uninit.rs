@@ -2,6 +2,7 @@ use std::sync::{mpsc, Arc};
 use std::time::Instant;
 use egui::{epaint, Color32, TextureHandle, TextureOptions, Ui};
 use egui::UiKind::CentralPanel;
+use klingt::CpalDevice;
 use winit::application::ApplicationHandler;
 use winit::event_loop::ActiveEventLoop;
 #[cfg(target_arch = "wasm32")]
@@ -52,8 +53,13 @@ impl App {
             instant: Instant::now(),
         };
 
+        // Query the audio device sample rate for proper resampling
+        let target_sample_rate = CpalDevice::default_output()
+            .map(|d| d.sample_rate() as f64)
+            .unwrap_or(48000.0);
+
         Self {
-            emulator: Some(Emulator::init(clock, 48000.0)),
+            emulator: Some(Emulator::init(clock, target_sample_rate)),
             gc: None,
             window: None,
             egui_renderer: None,

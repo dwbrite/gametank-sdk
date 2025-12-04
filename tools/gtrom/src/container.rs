@@ -40,42 +40,19 @@ pub fn is_in_container() -> bool {
         || std::env::var("container").is_ok()
 }
 
-/// Find the workspace root (where .git or root Cargo.toml is)
-pub fn find_workspace_root() -> Result<std::path::PathBuf, String> {
-    let mut current = std::env::current_dir()
-        .map_err(|e| format!("Failed to get current directory: {}", e))?;
-    
-    loop {
-        // Check for .git directory (repo root)
-        if current.join(".git").exists() {
-            return Ok(current);
-        }
-        // Check for workspace Cargo.toml with [workspace] section
-        let cargo_toml = current.join("Cargo.toml");
-        if cargo_toml.exists() {
-            if let Ok(content) = std::fs::read_to_string(&cargo_toml) {
-                if content.contains("[workspace]") {
-                    return Ok(current);
-                }
-            }
-        }
-        
-        if !current.pop() {
-            break;
-        }
-    }
-    
-    // Fallback to current dir
+/// Get the mount root for the container.
+/// This is the current working directory - the user's project root.
+pub fn get_mount_root() -> Result<std::path::PathBuf, String> {
     std::env::current_dir()
         .map_err(|e| format!("Failed to get current directory: {}", e))
 }
 
-/// Ensure the build container is running
+/// Ensure the build container is running with the correct mount point
 pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), String> {
     let runtime = ContainerRuntime::detect()
         .ok_or_else(|| "No container runtime found. Please install podman or docker.".to_string())?;
     
-    let workspace_root = find_workspace_root()?;
+    let mount_root = get_mount_root()?;
     let cmd = runtime.as_str();
     
     // Check if container is already running
@@ -86,7 +63,24 @@ pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), Stri
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     if stdout.contains("gametank") {
-        return Ok((workspace_root, runtime));
+        // Container is running - check if mount point matches
+        let inspect_output = Command::new(cmd)
+            .args(["inspect", "gametank", "--format", "{{range .Mounts}}{{.Source}}{{end}}"])
+            .output()
+            .map_err(|e| format!("Failed to inspect container: {}", e))?;
+        
+        let current_mount = String::from_utf8_lossy(&inspect_output.stdout).trim().to_string();
+        let expected_mount = mount_root.to_string_lossy().to_string();
+        
+        if current_mount == expected_mount {
+            return Ok((mount_root, runtime));
+        }
+        
+        // Mount point changed - need to recreate container
+        println!("Workspace changed, recreating container...");
+        let _ = Command::new(cmd)
+            .args(["rm", "-f", "gametank"])
+            .status();
     }
 
     // Start the container
@@ -94,8 +88,8 @@ pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), Stri
     
     // Build volume mount arg - podman uses :z for SELinux, docker doesn't need it
     let volume_arg = match runtime {
-        ContainerRuntime::Podman => format!("{}:/workspace:z", workspace_root.display()),
-        ContainerRuntime::Docker => format!("{}:/workspace", workspace_root.display()),
+        ContainerRuntime::Podman => format!("{}:/workspace:z", mount_root.display()),
+        ContainerRuntime::Docker => format!("{}:/workspace", mount_root.display()),
     };
     
     let status = Command::new(cmd)
@@ -111,7 +105,7 @@ pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), Stri
         .map_err(|e| format!("Failed to start container: {}", e))?;
 
     if status.success() {
-        Ok((workspace_root, runtime))
+        Ok((mount_root, runtime))
     } else {
         Err("Failed to start build container".to_string())
     }

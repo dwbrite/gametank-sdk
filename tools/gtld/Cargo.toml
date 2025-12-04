@@ -3,6 +3,7 @@ name = "gtld"
 version = "0.10.1"
 edition = "2024"
 repository = "https://github.com/dwbrite/gametank-sdk"
+homepage = "https://github.com/dwbrite/gametank-sdk"
 authors = ["Devin Brite <dwbrite@gmail.com>"]
 
 description = "GameTank Loader! For loading gametank roms onto 2M Flash cartridges using the Gametank Cartridge Programmer v4"

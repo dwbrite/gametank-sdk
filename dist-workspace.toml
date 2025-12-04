@@ -1,5 +1,5 @@
 [workspace]
-members = ["cargo:."]
+members = ["cargo:tools/gte/frontend", "cargo:tools/gtrom", "cargo:tools/gtgo", "cargo:tools/gtld"]
 
 # Config for 'dist'
 [dist]
@@ -21,7 +21,7 @@ install-updater = false
 tap = "dwbrite/tap"
 # Publish jobs to run in CI
 publish-jobs = ["homebrew"]
-# Merge all binaries into a single installer
+# Whether to run otherwise-parallelizable tasks on the same machine
 merge-tasks = true
 
 # System dependencies for Linux builds

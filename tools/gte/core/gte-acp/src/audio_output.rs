@@ -11,12 +11,14 @@ use petgraph::prelude::NodeIndex;
 
 pub struct GameTankSignal {
     buffer: Consumer<u8>,
+    last_sample: f32,
 }
 
 impl GameTankSignal {
     pub fn new(buffer: Consumer<u8>) -> Self {
         Self {
             buffer,
+            last_sample: 0.0,
         }
     }
 }
@@ -26,10 +28,12 @@ impl Signal for GameTankSignal {
 
     fn next(&mut self) -> Self::Frame {
         if let Ok(sample) = self.buffer.pop() {
-            (sample as f32 / 255.0) * 2.0 - 1.0
+            let value = (sample as f32 / 255.0) * 2.0 - 1.0;
+            self.last_sample = value;
+            value
         } else {
-            warn!("FEED THE BUFFFEERRRRRR");
-            0.0
+            // Hold last sample to avoid pops
+            self.last_sample
         }
     }
 
@@ -52,9 +56,9 @@ pub struct GameTankAudio {
 
 impl GameTankAudio {
     pub fn new(sample_rate: f64, target_sample_rate: f64) -> Self {
-        // caps out around 48kHz, but technically the system can go higher...
-        let (input_producer, input_buffer) = RingBuffer::<u8>::new(1024); // Ring buffer to hold GameTank samples
-        let (output_producer, output_consumer) = RingBuffer::<Buffer>::new(4096); // Ring buffer to hold output buffers
+        // Ring buffer sized to hold a decent amount of samples to avoid underruns
+        let (input_producer, input_buffer) = RingBuffer::<u8>::new(4096);
+        let (output_producer, output_consumer) = RingBuffer::<Buffer>::new(4096);
         let interp = Linear::new(0.0, 0.0);
 
         let signal = GameTankSignal::new(input_buffer);
