@@ -1,0 +1,4 @@
+# Workspace-level cargo-release config
+# Disable tagging for all packages by default - only gametank-sdk (tools) creates a tag
+tag = false
+publish = true
