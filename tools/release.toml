@@ -8,9 +8,11 @@ tag-prefix = "gametank-sdk-"
 tag-name = "{{prefix}}v{{version}}"
 
 # Let cargo-dist handle GitHub releases
-push = true
 tag = true
 publish = false
 
-# Push commit and tag atomically so GitHub Actions triggers reliably
-push-options = ["--follow-tags", "--atomic"]
+# Push commit, wait for GitHub to process, then push tag
+push = true
+push-remote = "origin"
+tag-push = false
+post-release-hook = ["bash", "-c", "sleep 3 && git push origin --tags"]
