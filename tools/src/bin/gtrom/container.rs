@@ -98,7 +98,7 @@ pub fn ensure_container() -> Result<(std::path::PathBuf, ContainerRuntime), Stri
             "--name", "gametank",
             "-v", &volume_arg,
             "--replace",
-            "rust-mos:gte",
+            "docker.io/dwbrite/rust-mos:gte",
             "sleep", "infinity"
         ])
         .status()

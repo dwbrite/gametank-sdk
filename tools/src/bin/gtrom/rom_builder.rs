@@ -106,8 +106,9 @@ impl RomBuilder {
             }))
             .collect();
 
-        // ROM data - 128x 16k banks
-        let mut rom = [[0x00u8; 1 << 14]; 128];
+        // ROM data - 128x 16k banks (2MB total)
+        // Use Box to allocate on heap - Windows has 1MB stack limit
+        let mut rom: Box<[[u8; 1 << 14]; 128]> = Box::new([[0x00u8; 1 << 14]; 128]);
 
         for s in map_sections {
             rom[s.bank as usize][s.bank_loc..s.bank_loc + s.size].copy_from_slice(&s.bytes);
@@ -122,7 +123,7 @@ impl RomBuilder {
         }
 
         let mut file = File::create(&output_path).expect("Failed to create output file");
-        let flat: &[u8; 2 * 1024 * 1024] = unsafe { core::mem::transmute(&rom) };
+        let flat: &[u8; 2 * 1024 * 1024] = unsafe { core::mem::transmute(&*rom) };
         file.write_all(flat).expect("Failed to write ROM data");
 
         println!("Created: {}", output_path);
