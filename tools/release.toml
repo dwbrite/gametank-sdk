@@ -11,3 +11,6 @@ tag-name = "{{prefix}}v{{version}}"
 push = true
 tag = true
 publish = false
+
+# Push commit and tag atomically so GitHub Actions triggers reliably
+push-options = ["--follow-tags", "--atomic"]
