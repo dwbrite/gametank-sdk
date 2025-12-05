@@ -1,7 +1,7 @@
 # cargo-release configuration for gtrom
 # The pre-release-hook rebuilds the SDK tarball before publishing
 
-pre-release-hook = ["tar", "-czf", "sdk-template.tar.gz", "-C", "..", "--exclude=*/target", "--exclude=*.gtr", "sdk"]
+pre-release-hook = ["tar", "-czf", "src/bin/sdk-template.tar.gz", "-C", "..", "--exclude=*/target", "--exclude=*.gtr", "sdk"]
 
 # Tag format for workspace member
 tag-prefix = "gametank-sdk-"
