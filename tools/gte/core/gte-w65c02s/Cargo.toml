@@ -1,6 +1,6 @@
 [package]
 name = "gte-w65c02s"
-version = "0.15.0"
+version = "0.16.0"
 authors = ["Solra Bizna <solra@bizna.name>", "Devin Brite"]
 edition = "2018"
 description = "No longer cycle-accurate, nor exhaustively tested simulator of W65C02S microprocessor"

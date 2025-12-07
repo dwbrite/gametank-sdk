@@ -1,6 +1,6 @@
 [package]
 name = "gametank-libretro"
-version = "0.15.0"
+version = "0.16.0"
 edition = "2021"
 description = "GameTank libretro core"
 license = "MIT"
@@ -13,7 +13,7 @@ publish = false
 crate-type = ["cdylib"]
 
 [dependencies]
-gte-core = { path = "../core", version = "0.15.0" }
+gte-core = { path = "../core", version = "0.16.0" }
 
 [dependencies.libretro-rs]
 git = "https://github.com/libretro-rs/libretro-rs"

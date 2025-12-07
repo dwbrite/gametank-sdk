@@ -1,6 +1,6 @@
 [package]
 name = "gametank-sdk"
-version = "0.15.0"
+version = "0.16.0"
 edition = "2021"
 description = "GameTank SDK - Complete toolkit for GameTank development"
 license = "MIT"
@@ -32,7 +32,7 @@ path = "src/bin/gtld/main.rs"
 
 [dependencies]
 # gte dependencies
-gte-core = { path = "gte/core", version = "0.15.0" }
+gte-core = { path = "gte/core", version = "0.16.0" }
 winit = { version = "0.30", features = ["rwh_06"] }
 egui = { version = "0.31" }
 egui_extras = "0.31"
