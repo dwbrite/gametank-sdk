@@ -1,6 +1,6 @@
 [package]
 name = "gametank"
-version = "0.16.0"
+version = "0.17.0"
 edition = "2024"
 description = "Hardware abstraction layer for the GameTank console"
 license = "MIT"

@@ -1598,7 +1598,7 @@ dependencies = [
 
 [[package]]
 name = "gametank"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "bit_field",
  "bitflags 2.10.0",
@@ -1607,7 +1607,7 @@ dependencies = [
 
 [[package]]
 name = "gametank-libretro"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "gte-core",
  "libretro-rs",
@@ -1615,7 +1615,7 @@ dependencies = [
 
 [[package]]
 name = "gametank-sdk"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "anyhow",
  "clap 4.5.53",
@@ -1808,7 +1808,7 @@ dependencies = [
 
 [[package]]
 name = "gte-acp"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "dasp_graph",
  "dasp_interpolate",
@@ -1822,7 +1822,7 @@ dependencies = [
 
 [[package]]
 name = "gte-core"
-version = "0.16.0"
+version = "0.17.0"
 dependencies = [
  "bit_field",
  "bitfield",
@@ -1838,7 +1838,7 @@ dependencies = [
 
 [[package]]
 name = "gte-w65c02s"
-version = "0.16.0"
+version = "0.17.0"
 
 [[package]]
 name = "half"
