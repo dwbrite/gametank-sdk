@@ -1,4 +1,5 @@
 #![no_std]
+#![allow(static_mut_refs)]
 
 //! # GameTank SDK
 //!
@@ -165,3 +166,6 @@ pub mod via;
 pub mod video_dma;
 pub mod audio;
 pub mod boot;
+pub mod input;
+pub mod console;
+

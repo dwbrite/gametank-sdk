@@ -1,4 +1,4 @@
-use gametank::{scr::SystemControl, video_dma::blitter::BlitterGuard};
+use gametank::video_dma::blitter::BlitterGuard;
 
 #[derive(Copy, Clone)]
 pub struct Ball {
@@ -14,23 +14,22 @@ impl Ball {
     pub fn do_ball_things(&mut self) {
         self.x += self.vx;
         self.y += self.vy;
-        if self.x >= (128 - self.size) as i8 {
+        if self.x > (128 - self.size) as i8 {
             self.vx = -1;
         }
-        if self.x <= 33 {
+        if self.x <= 32 {
             self.vx = 1;
         }
-        if self.y >= (128 - self.size) as i8 {
+        if self.y >= (118 - self.size) as i8 {
             self.vy = -1;
         }
-        if self.y <= 1 {
+        if self.y < 10 {
             self.vy = 1;
         }
     }
 
-    pub fn draw(&self, sc: &mut SystemControl, blitter: &mut BlitterGuard) {
+    pub fn draw(&self, blitter: &mut BlitterGuard) {
         blitter.draw_square(
-            sc,
             self.x as u8,
             self.y as u8,
             self.size,

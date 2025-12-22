@@ -36,35 +36,46 @@
 //! The framebuffer is row-major, 128 bytes per row.
 
 use crate::{
-    scr::{BankFlags, SystemControl, VideoFlags},
+    scr::VideoFlags,
     video_dma::{Blitter, VideoDma, spritemem::SpriteMem},
 };
 
+/// Write video flags to the hardware register at $2007.
+#[inline(always)]
+fn write_video_flags(flags: VideoFlags) {
+    unsafe {
+        core::ptr::write_volatile(0x2007 as *mut u8, flags.bits());
+    }
+}
+
+#[repr(C)]
 pub(crate) struct Framebuffers;
 
 impl Framebuffers {
     #[inline(always)]
-    pub fn blitter(self, sc: &mut SystemControl) -> Blitter {
-        sc.mir.video_reg.insert(VideoFlags::DMA_ENABLE);
-        sc.scr.video_reg = sc.mir.video_reg;
+    pub fn blitter(self, vf: &mut VideoFlags) -> Blitter {
+        vf.insert(VideoFlags::DMA_ENABLE);
+        write_video_flags(*vf);
         Blitter
     }
 
     #[inline(always)]
-    pub fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
+    pub fn sprite_mem(self, vf: &mut VideoFlags) -> SpriteMem {
         // DMA_ENABLE is already false
-        sc.mir.video_reg.remove(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
+        vf.remove(VideoFlags::DMA_CPU_TO_VRAM);
+        write_video_flags(*vf);
         SpriteMem
     }
 }
 
 /// Exclusive access to framebuffer memory.
 ///
-/// Provides double buffering (`flip`) and direct pixel access (`bytes`).
+/// Provides direct pixel access (`bytes`).
+/// For double buffering, use [`Console::flip_framebuffers`](crate::console::Console::flip_framebuffers).
 /// Released back to [`DmaManager`](super::DmaManager) when dropped.
 pub struct FramebuffersGuard<'a> {
     pub(crate) dma_slot: &'a mut Option<VideoDma>,
+    #[allow(dead_code)]
     pub(crate) inner: Framebuffers,
 }
 
@@ -85,24 +96,5 @@ impl<'a> FramebuffersGuard<'a> {
     #[inline(always)]
     pub fn bytes(&mut self) -> &mut [u8; 0x4000] {
         unsafe { &mut *(0x4000 as *mut [u8; 0x4000]) }
-    }
-
-    /// Swap the displayed and drawing framebuffers (double buffering).
-    ///
-    /// After calling this, the buffer you were drawing to is now displayed,
-    /// and you'll be drawing to the previously-displayed buffer.
-    ///
-    /// Call this once per frame, typically right after [`wait()`](crate::boot::wait).
-    /// aliasing rules mean we can't borrow bytes and flip at the "same" time - I think?
-    /// TODO: maybe flip returns a different framebufferguard, by consuming and returning?
-    #[inline(always)]
-    pub fn flip(self, sc: &mut SystemControl) -> Self {
-        unsafe {
-            sc.mir.banking.toggle(BankFlags::FRAMEBUFFER_SELECT);
-            sc.mir.video_reg.toggle(VideoFlags::DMA_PAGE_OUT);
-            sc.scr.banking = sc.mir.banking;
-            sc.scr.video_reg = sc.mir.video_reg;
-        }
-        self
     }
 }

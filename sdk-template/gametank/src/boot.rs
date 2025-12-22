@@ -1,9 +1,11 @@
-use core::{panic::PanicInfo, ptr};
+#[cfg(target_arch = "mos")]
+use core::panic::PanicInfo;
+use core::ptr;
 
-use crate::{blitter::SpriteQuadrant, scr::Console};
+use crate::{blitter::SpriteQuadrant, console::Console};
 
-unsafe extern "C" {
-    fn main(console: Console);
+unsafe extern "Rust" {
+    unsafe fn main(console: &mut Console);
 }
 
 #[cfg(target_arch = "mos")]
@@ -12,20 +14,20 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
     loop {}
 }
 
+#[unsafe(link_section = ".data.zp")]
 pub static mut VBLANK: bool = false;
 
 unsafe extern "C" {
-    #[inline(always)]
     pub unsafe fn return_from_interrupt();
 
-    #[inline(always)]
     pub unsafe fn wait();
 
-    #[inline(always)]
     pub unsafe fn enable_irq_handler();
 
-    #[inline(always)]
     pub unsafe fn disable_irq_handler();
+
+    /// Set the overflow (V) flag. Used by llvm-mos for certain operations.
+    // pub unsafe fn __set_v();
 
     pub unsafe static mut __rc50: u8;
     pub unsafe static mut __rc51: u8;
@@ -96,12 +98,12 @@ pub static _VECTOR_TABLE: [unsafe extern "C" fn(); 3] = [
 
 #[inline(never)]
 fn call_main() {
-    let mut console = Console::init();
-    if let Some(mut blitter) = console.dma.blitter(&mut console.sc) {
-        blitter.draw_square(&mut console.sc, 0, 0, 10, 10, 0b1010_1010);
+    let console = &mut Console::init();
+    if let Some(mut blitter) = console.dma.blitter(&mut console.video_flags) {
+        blitter.draw_square(0, 0, 10, 10, 0b1010_1010);
     }
 
-    if let Some(mut blitter) = console.dma.blitter(&mut console.sc) {
+    if let Some(mut blitter) = console.dma.blitter(&mut console.video_flags) {
         blitter.set_vram_quad(SpriteQuadrant::One);
     }
 

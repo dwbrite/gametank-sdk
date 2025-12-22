@@ -38,11 +38,6 @@
 
 use volatile_register::WO;
 
-use crate::{
-    boot::{wait},
-    scr::SystemControl, video_dma::blitter::Blitter,
-};
-
 /// Blitter Control Register hardware layout at `$4000-$4007`.
 ///
 /// Write-only registers that control blitter DMA operations.

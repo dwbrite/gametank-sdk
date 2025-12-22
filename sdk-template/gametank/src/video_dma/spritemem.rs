@@ -40,25 +40,34 @@
 //! The CPU quadrant restriction only affects direct memory access, not blits.
 
 use crate::{
-    scr::{SystemControl, VideoFlags},
+    scr::VideoFlags,
     video_dma::{VideoDma, blitter::Blitter, framebuffers::Framebuffers},
 };
 
+/// Write video flags to the hardware register at $2007.
+#[inline(always)]
+fn write_video_flags(flags: VideoFlags) {
+    unsafe {
+        core::ptr::write_volatile(0x2007 as *mut u8, flags.bits());
+    }
+}
+
+#[repr(C)]
 pub(crate) struct SpriteMem;
 
 impl SpriteMem {
     #[inline(always)]
-    pub fn blitter(self, sc: &mut SystemControl) -> Blitter {
-        sc.mir.video_reg.insert(VideoFlags::DMA_ENABLE);
-        sc.scr.video_reg = sc.mir.video_reg;
+    pub fn blitter(self, vf: &mut VideoFlags) -> Blitter {
+        vf.insert(VideoFlags::DMA_ENABLE);
+        write_video_flags(*vf);
         Blitter
     }
 
     #[inline(always)]
-    pub fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
+    pub fn framebuffers(self, vf: &mut VideoFlags) -> Framebuffers {
         // DMA_ENABLE is already false
-        sc.mir.video_reg.insert(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
+        vf.insert(VideoFlags::DMA_CPU_TO_VRAM);
+        write_video_flags(*vf);
         Framebuffers
     }
 }
@@ -71,6 +80,7 @@ impl SpriteMem {
 /// Released back to [`DmaManager`](super::DmaManager) when dropped.
 pub struct SpriteMemGuard<'a> {
     pub(crate) dma_slot: &'a mut Option<VideoDma>,
+    #[allow(dead_code)]
     pub(crate) inner: SpriteMem,
 }
 

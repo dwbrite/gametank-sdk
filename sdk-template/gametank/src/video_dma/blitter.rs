@@ -52,34 +52,41 @@
 //! const BLUE: u8   = 0b101_11_100;  // Hue=5
 //!
 //! // ALWAYS invert when drawing!
-//! blitter.draw_square(&mut console.sc, 10, 10, 32, 32, !RED);
+//! blitter.draw_square(10, 10, 32, 32, !RED);
 //! ```
 
 use crate::{
     boot::wait,
-    blitter::{Bcr, BlitterFillMode, SpriteQuadrant},
-    scr::{SystemControl, VideoFlags},
+    blitter::{Bcr, SpriteQuadrant},
+    scr::VideoFlags,
     video_dma::{framebuffers::Framebuffers, spritemem::SpriteMem, VideoDma},
 };
 
+#[repr(C)]
 pub(crate) struct Blitter;
 
 impl Blitter {
     #[inline(always)]
-    pub fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
-        sc.mir.video_reg.remove(VideoFlags::DMA_ENABLE);
-        sc.mir.video_reg.insert(VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
+    pub fn framebuffers(self, vf: &mut VideoFlags) -> Framebuffers {
+        vf.remove(VideoFlags::DMA_ENABLE);
+        vf.insert(VideoFlags::DMA_CPU_TO_VRAM);
+        write_video_flags(*vf);
         Framebuffers
     }
 
     #[inline(always)]
-    pub fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
-        sc.mir
-            .video_reg
-            .remove(VideoFlags::DMA_ENABLE | VideoFlags::DMA_CPU_TO_VRAM);
-        sc.scr.video_reg = sc.mir.video_reg;
+    pub fn sprite_mem(self, vf: &mut VideoFlags) -> SpriteMem {
+        vf.remove(VideoFlags::DMA_ENABLE | VideoFlags::DMA_CPU_TO_VRAM);
+        write_video_flags(*vf);
         SpriteMem
+    }
+}
+
+/// Write video flags to the hardware register at $2007.
+#[inline(always)]
+fn write_video_flags(flags: VideoFlags) {
+    unsafe {
+        core::ptr::write_volatile(0x2007 as *mut u8, flags.bits());
     }
 }
 
@@ -91,13 +98,15 @@ impl Blitter {
 /// # Example
 ///
 /// ```ignore
-/// let mut blitter = console.dma.blitter(&mut console.sc).unwrap();
-/// blitter.draw_square(&mut console.sc, 10, 10, 32, 32, !0b111_00_000);
+/// let mut blitter = console.dma.blitter(&mut console.video_flags).unwrap();
+/// blitter.draw_square(10, 10, 32, 32, !0b111_00_000);
 /// blitter.wait_blit();
 /// // blitter is automatically released when it goes out of scope
 /// ```
 pub struct BlitterGuard<'a> {
     pub(crate) dma_slot: &'a mut Option<VideoDma>,
+    pub(crate) video_flags: &'a mut VideoFlags,
+    #[allow(dead_code)]
     pub(crate) inner: Blitter,
 }
 
@@ -112,7 +121,6 @@ impl<'a> BlitterGuard<'a> {
     ///
     /// # Arguments
     ///
-    /// * `sc` - System control reference
     /// * `x` - Framebuffer X coordinate (0-127)
     /// * `y` - Framebuffer Y coordinate (0-127)
     /// * `width` - Width in pixels
@@ -123,22 +131,22 @@ impl<'a> BlitterGuard<'a> {
     ///
     /// ```ignore
     /// // Draw a red 16x16 square at (10, 20)
-    /// blitter.draw_square(&mut console.sc, 10, 20, 16, 16, !0b000_00_111);
+    /// blitter.draw_square(10, 20, 16, 16, !0b000_00_111);
     /// blitter.wait_blit();
     /// ```
     #[inline(always)]
     pub fn draw_square(
         &mut self,
-        sc: &mut SystemControl,
         x: u8,
         y: u8,
         width: u8,
         height: u8,
         color: u8,
     ) {
-        sc.set_fill_mode(BlitterFillMode::Color);
+        self.video_flags.insert(VideoFlags::DMA_COLORFILL);
+        write_video_flags(*self.video_flags);
         unsafe {
-            let mut bcr = Bcr::new();
+            let bcr = Bcr::new();
             bcr.fb_x.write(x);
             bcr.fb_y.write(y);
             bcr.width.write(width);
@@ -152,7 +160,6 @@ impl<'a> BlitterGuard<'a> {
     ///
     /// # Arguments
     ///
-    /// * `sc` - System control reference
     /// * `sx` - Sprite RAM source X coordinate
     /// * `sy` - Sprite RAM source Y coordinate
     /// * `fb_x` - Framebuffer destination X (0-127)
@@ -164,13 +171,12 @@ impl<'a> BlitterGuard<'a> {
     ///
     /// ```ignore
     /// // Copy a 32x32 sprite from (0,0) in sprite RAM to (50,50) on screen
-    /// blitter.draw_sprite(&mut console.sc, 0, 0, 50, 50, 32, 32);
+    /// blitter.draw_sprite(0, 0, 50, 50, 32, 32);
     /// blitter.wait_blit();
     /// ```
     #[inline(always)]
     pub fn draw_sprite(
         &mut self,
-        sc: &mut SystemControl,
         sx: u8,
         sy: u8,
         fb_x: u8,
@@ -178,9 +184,10 @@ impl<'a> BlitterGuard<'a> {
         width: u8,
         height: u8,
     ) {
-        sc.set_fill_mode(BlitterFillMode::Sprite);
+        self.video_flags.remove(VideoFlags::DMA_COLORFILL);
+        write_video_flags(*self.video_flags);
         unsafe {
-            let mut bcr = Bcr::new();
+            let bcr = Bcr::new();
             bcr.vram_x.write(sx);
             bcr.vram_y.write(sy);
             bcr.fb_x.write(fb_x);
@@ -219,7 +226,7 @@ impl<'a> BlitterGuard<'a> {
     pub fn wait_blit(&self) {
         unsafe {
             wait();
-            let mut bcr = Bcr::new();
+            let bcr = Bcr::new();
             bcr.start.write(0);
         }
     }
@@ -229,5 +236,52 @@ impl<'a> BlitterGuard<'a> {
     /// For advanced use cases where you need low-level control.
     pub fn bcr(&mut self) -> &mut Bcr {
         unsafe { Bcr::new() }
+    }
+
+    /// Draw letterbox borders to mask overscan areas.
+    ///
+    /// Draws black bars on:
+    /// - Top 10 pixels (y: 0-9)
+    /// - Bottom 10 pixels (y: 118-127)
+    /// - Right column (x: 127, full height)
+    ///
+    /// This is intended to be called just before vsync to hide content
+    /// in the overscan region that may not be visible on all displays.
+    ///
+    /// # Example
+    ///
+    /// ```ignore
+    /// // Draw your scene...
+    /// blitter.draw_sprite(0, 0, 0, 0, 127, 127);
+    /// blitter.wait_blit();
+    ///
+    /// // Apply letterbox before vsync
+    /// blitter.draw_letterbox();
+    /// blitter.wait_blit();
+    /// ```
+    #[inline(always)]
+    pub fn draw_letterbox(&mut self) {
+        const BLACK: u8 = !0u8; // Inverted color: !0 = 0xFF = black
+        const LETTERBOX_HEIGHT: u8 = 10;
+
+        // Top bar: 127px wide, 10px tall, at (0, 0)
+        self.draw_square(0, 0, 127, LETTERBOX_HEIGHT, BLACK);
+        self.wait_blit();
+
+        // Top bar: remaining 1px column at (127, 0)
+        self.draw_square(127, 0, 1, LETTERBOX_HEIGHT, BLACK);
+        self.wait_blit();
+
+        // Bottom bar: 127px wide, 10px tall, at (0, 118)
+        self.draw_square(0, 128 - LETTERBOX_HEIGHT, 127, LETTERBOX_HEIGHT, BLACK);
+        self.wait_blit();
+
+        // Bottom bar: remaining 1px column at (127, 118)
+        self.draw_square(127, 128 - LETTERBOX_HEIGHT, 1, LETTERBOX_HEIGHT, BLACK);
+        self.wait_blit();
+
+        // Right column: 1px wide, middle section (between letterbox bars)
+        // From y=10 to y=117 (108 pixels)
+        self.draw_square(127, LETTERBOX_HEIGHT, 1, 128 - (LETTERBOX_HEIGHT * 2), BLACK);
     }
 }

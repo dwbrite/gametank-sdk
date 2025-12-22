@@ -9,13 +9,13 @@
 //! This is the main way to draw graphics:
 //!
 //! ```ignore
-//! let mut blitter = console.dma.blitter(&mut console.sc).unwrap();
+//! let mut blitter = console.dma.blitter(&mut console.video_flags).unwrap();
 //!
 //! // Fill rectangles with solid colors
-//! blitter.draw_square(&mut console.sc, x, y, width, height, !color);
+//! blitter.draw_square(x, y, width, height, !color);
 //!
 //! // Copy sprites from sprite RAM to screen
-//! blitter.draw_sprite(&mut console.sc, src_x, src_y, dst_x, dst_y, w, h);
+//! blitter.draw_sprite(src_x, src_y, dst_x, dst_y, w, h);
 //!
 //! // IMPORTANT: Wait before the next draw or before accessing video memory
 //! blitter.wait_blit();
@@ -28,7 +28,7 @@
 //!
 //! ```ignore
 //! // Start drawing the background (128×128 = 16K pixels)
-//! blitter.draw_sprite(&mut console.sc, 0, 0, 0, 0, 128, 128);
+//! blitter.draw_sprite(0, 0, 0, 0, 128, 128);
 //!
 //! // These run IN PARALLEL with the blit - essentially "free" CPU time!
 //! update_physics();
@@ -49,7 +49,7 @@
 //!     
 //!     // Flip: the buffer we drew to is now displayed,
 //!     // and we'll draw to the previously-displayed one
-//!     console.dma.framebuffers(&mut console.sc).unwrap().flip(&mut console.sc);
+//!     console.flip_framebuffers();
 //!     
 //!     // Now draw the next frame...
 //! }
@@ -60,7 +60,7 @@
 //! Before you can draw sprites, load graphics into sprite RAM:
 //!
 //! ```ignore
-//! let mut sm = console.dma.sprite_mem(&mut console.sc).unwrap();
+//! let mut sm = console.dma.sprite_mem(&mut console.video_flags).unwrap();
 //! sm.bytes()[..my_sprites.len()].copy_from_slice(my_sprites);
 //! ```
 //!
@@ -72,7 +72,7 @@ pub mod framebuffers;
 pub mod spritemem;
 
 use crate::{
-    scr::{SystemControl, VideoFlags},
+    scr::VideoFlags,
     video_dma::{
         blitter::{Blitter, BlitterGuard},
         framebuffers::{Framebuffers, FramebuffersGuard},
@@ -84,6 +84,7 @@ use crate::{
 //   DMA_CPU_TO_VRAM == 1 -> Framebuffers
 //   DMA_CPU_TO_VRAM == 0 -> Sprite RAM
 // DMA_ENABLE == 1 -> Blitter Control Registers
+#[repr(C)]
 pub(crate) enum VideoDma {
     DmaFb(Framebuffers),
     DmaBlit(Blitter),
@@ -96,7 +97,8 @@ pub(crate) enum VideoDma {
 /// depending on hardware flags. `DmaManager` ensures only one is active
 /// at a time using Rust's ownership system.
 ///
-/// Access video hardware through [`Console::dma`](crate::scr::Console::dma).
+/// Access video hardware through [`Console::dma`](crate::console::Console::dma).
+#[repr(C)]
 pub struct DmaManager {
     pub(crate) video_dma: Option<VideoDma>,
 }
@@ -116,14 +118,15 @@ impl DmaManager {
     /// # Example
     ///
     /// ```ignore
-    /// let mut blitter = console.dma.blitter(&mut console.sc).unwrap();
-    /// blitter.draw_square(&mut console.sc, 0, 0, 128, 128, !0);
+    /// let mut blitter = console.dma.blitter(&mut console.video_flags).unwrap();
+    /// blitter.draw_square(0, 0, 128, 128, !0);
     /// blitter.wait_blit();
     /// ```
-    pub fn blitter(&mut self, sc: &mut SystemControl) -> Option<BlitterGuard> {
-        let b = self.video_dma.take()?.blitter(sc);
+    pub fn blitter<'a>(&'a mut self, vf: &'a mut VideoFlags) -> Option<BlitterGuard<'a>> {
+        let b = self.video_dma.take()?.blitter(vf);
         Some(BlitterGuard {
             dma_slot: &mut self.video_dma,
+            video_flags: vf,
             inner: b,
         })
     }
@@ -131,17 +134,19 @@ impl DmaManager {
     /// Get exclusive access to the framebuffers.
     ///
     /// Returns `None` if video hardware is currently in use.
-    /// Use this to flip buffers (double buffering) or write pixels directly.
+    /// Use this to write pixels directly.
+    ///
+    /// For double buffering, use [`Console::flip_framebuffers`](crate::console::Console::flip_framebuffers).
     ///
     /// # Example
     ///
     /// ```ignore
-    /// if let Some(fb) = console.dma.framebuffers(&mut console.sc) {
-    ///     fb.flip(&mut console.sc); // Swap display/draw buffers
+    /// if let Some(mut fb) = console.dma.framebuffers(&mut console.video_flags) {
+    ///     fb.bytes()[0] = 0xFF; // Write a pixel
     /// }
     /// ```
-    pub fn framebuffers(&mut self, sc: &mut SystemControl) -> Option<FramebuffersGuard> {
-        let fb = self.video_dma.take()?.framebuffers(sc);
+    pub fn framebuffers<'a>(&'a mut self, vf: &'a mut VideoFlags) -> Option<FramebuffersGuard<'a>> {
+        let fb = self.video_dma.take()?.framebuffers(vf);
         Some(FramebuffersGuard {
             dma_slot: &mut self.video_dma,
             inner: fb,
@@ -156,12 +161,12 @@ impl DmaManager {
     /// # Example
     ///
     /// ```ignore
-    /// if let Some(mut sm) = console.dma.sprite_mem(&mut console.sc) {
+    /// if let Some(mut sm) = console.dma.sprite_mem(&mut console.video_flags) {
     ///     sm.bytes().copy_from_slice(&MY_SPRITE_DATA);
     /// }
     /// ```
-    pub fn sprite_mem(&mut self, sc: &mut SystemControl) -> Option<SpriteMemGuard> {
-        let sm = self.video_dma.take()?.sprite_mem(sc);
+    pub fn sprite_mem<'a>(&'a mut self, vf: &'a mut VideoFlags) -> Option<SpriteMemGuard<'a>> {
+        let sm = self.video_dma.take()?.sprite_mem(vf);
         Some(SpriteMemGuard {
             dma_slot: &mut self.video_dma,
             inner: sm,
@@ -171,28 +176,28 @@ impl DmaManager {
 
 impl VideoDma {
     #[inline(always)]
-    fn framebuffers(self, sc: &mut SystemControl) -> Framebuffers {
+    fn framebuffers(self, vf: &mut VideoFlags) -> Framebuffers {
         match self {
             VideoDma::DmaFb(framebuffers) => framebuffers,
-            VideoDma::DmaBlit(blitter) => blitter.framebuffers(sc),
-            VideoDma::DmaSprites(sprite_mem) => sprite_mem.framebuffers(sc),
+            VideoDma::DmaBlit(blitter) => blitter.framebuffers(vf),
+            VideoDma::DmaSprites(sprite_mem) => sprite_mem.framebuffers(vf),
         }
     }
 
     #[inline(always)]
-    fn blitter(self, sc: &mut SystemControl) -> Blitter {
+    fn blitter(self, vf: &mut VideoFlags) -> Blitter {
         match self {
-            VideoDma::DmaFb(framebuffers) => framebuffers.blitter(sc),
+            VideoDma::DmaFb(framebuffers) => framebuffers.blitter(vf),
             VideoDma::DmaBlit(blitter) => blitter,
-            VideoDma::DmaSprites(sprite_mem) => sprite_mem.blitter(sc),
+            VideoDma::DmaSprites(sprite_mem) => sprite_mem.blitter(vf),
         }
     }
 
     #[inline(always)]
-    fn sprite_mem(self, sc: &mut SystemControl) -> SpriteMem {
+    fn sprite_mem(self, vf: &mut VideoFlags) -> SpriteMem {
         match self {
-            VideoDma::DmaFb(framebuffers) => framebuffers.sprite_mem(sc),
-            VideoDma::DmaBlit(blitter) => blitter.sprite_mem(sc),
+            VideoDma::DmaFb(framebuffers) => framebuffers.sprite_mem(vf),
+            VideoDma::DmaBlit(blitter) => blitter.sprite_mem(vf),
             VideoDma::DmaSprites(sprite_mem) => sprite_mem,
         }
     }

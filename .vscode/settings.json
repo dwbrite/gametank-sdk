@@ -1,8 +1,10 @@
 {
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
+        "sdk-template/Cargo.toml",
+        "sdk-template/gametank/Cargo.toml",
+        "sdk-template/asset-macros/Cargo.toml",
         "tools/Cargo.toml",
-        "sdk/rom/Cargo.toml",
         "tools/gte/core/Cargo.toml",
         "tools/gte/libretro/Cargo.toml",
     ],

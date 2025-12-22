@@ -65,9 +65,6 @@ pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-8ch.b
 #[cfg(feature = "audio-wavetable-7ch-linear")]
 pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-7ch-linear.bin");
 
-#[cfg(feature = "audio-fm-4op")]
-pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/fm-4op.bin");
-
 // Audio interface modules - selected via Cargo.toml features
 #[cfg(feature = "audio-wavetable-8ch")]
 pub mod wavetable_8ch;

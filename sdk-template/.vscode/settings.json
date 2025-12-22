@@ -1,5 +1,7 @@
 {
     "rust-analyzer.linkedProjects": [
-        "rom/Cargo.toml"
+        "Cargo.toml",
+        "asset-macros/Cargo.toml",
+        "gametank/Cargo.toml",
     ]
 }
