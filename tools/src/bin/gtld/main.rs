@@ -10,6 +10,12 @@ use tempfile::NamedTempFile;
 
 static FIRMWARE: &[u8] = include_bytes!("latest-fw.hex");
 
+enum Cartridge {
+    Cart2M,
+    Cart32K,
+    Cart8K,
+}
+
 #[derive(Debug, PartialEq, StructOpt)]
 #[structopt(name = "gtld", about = "gametank (flash) loader")]
 struct Opt {
@@ -19,14 +25,24 @@ struct Opt {
 
 #[derive(Debug, PartialEq, StructOpt)]
 enum Subcommands {
-    Load { file: Option<String> },
-    Dump {},
+    Load { file: Option<String>, 
+        #[structopt(short, long)]
+        port: Option<String>
+    },
+    Dump {
+        #[structopt(short, long)]
+        port: Option<String>
+    },
     DangerZone(DangerZone),
 }
 
 #[derive(Debug, PartialEq, StructOpt)]
 enum DangerZone {
-    FwUpdate { file: Option<String> },
+    FwUpdate {
+        file: Option<String>,
+        #[structopt(short, long)]
+        port: Option<String>
+    },
     SelfDestruct,
 }
 
@@ -34,17 +50,19 @@ fn main() {
     let opt: Opt = Opt::from_args();
 
     match opt.subcommand {
-        Subcommands::Load { file } => {
-            let mut port = get_port().expect("failed to open port");
-            load_rom(&mut port, file).expect("failed to load rom");
+        Subcommands::Load { file, port  } => {
+            let (mut port, _) = get_port(port).expect("failed to open port");
+            reset_microcontroller(&mut port);
+            load_rom(&mut port, file, None).expect("failed to load rom");
         }
-        Subcommands::Dump { .. } => {
-            let mut port = get_port().expect("failed to open port");
+        Subcommands::Dump { port } => {
+            let (mut port, _) = get_port(port).expect("failed to open port");
+            reset_microcontroller(&mut port);
             dump(&mut port);
         }
-        Subcommands::DangerZone(DangerZone::FwUpdate { file }) => {
-            let port = select_port().expect("failed to select port");
-            flash_firmware(port, file)
+        Subcommands::DangerZone(DangerZone::FwUpdate { file, port }) => {
+            let port_name = select_port(port).expect("failed to select port");
+            flash_firmware(port_name, file)
         }
         Subcommands::DangerZone(DangerZone::SelfDestruct) => {
             println!("{}", style("What is *wrong* with you???").dim().italic());
@@ -58,7 +76,13 @@ fn main() {
     }
 }
 
-fn select_port() -> anyhow::Result<String> {
+fn reset_microcontroller(port: &mut Box<dyn SerialPort>) {
+    port.write_data_terminal_ready(false).expect("failed to set DTR");
+    sleep(Duration::from_millis(100));
+    port.write_data_terminal_ready(true).expect("failed to set DTR");
+}
+
+fn select_port(port: Option<String>) -> anyhow::Result<String> {
     let ports = available_ports().expect("No ports found!");
 
     // filter ports for USB serial on linux/windows/macos
@@ -78,6 +102,13 @@ fn select_port() -> anyhow::Result<String> {
             Err(anyhow::anyhow!("No USB serial ports found!"))
         }
         [p] => {
+            // if port name is provided and NOT in ports, error, otherwise use the one port
+            if let Some(port) = port {
+                if !p.port_name.ends_with(&port) {
+                    println!("Provided port {} not found among USB serial ports", port);
+                    return Err(anyhow::anyhow!("Provided port not found among USB serial ports"));
+                }
+            }
             println!("Using {}", p.port_name);
             Ok(p.port_name.clone())
         }
@@ -85,6 +116,16 @@ fn select_port() -> anyhow::Result<String> {
             println!("Multiple USB serial ports found");
 
             let port_names: Vec<String> = ports.iter().map(|port| port.port_name.clone()).collect();
+
+            // if port is in port_names, uniquely, select it, otherwise prompt
+            if let Some(port) = port {
+                if let Some(idx) = port_names.iter().position(|name| name.ends_with(&port)) {
+                    println!("Using {}", port_names[idx]);
+                    return Ok(port_names[idx].clone());
+                } else {
+                    println!("Provided port {} not found among USB serial ports", port);
+                }
+            }
 
             let selected = Select::new()
                 .with_prompt("Select your USB serial port")
@@ -98,21 +139,43 @@ fn select_port() -> anyhow::Result<String> {
     }
 }
 
-fn get_port() -> anyhow::Result<Box<dyn SerialPort>> {
-    let port_name = select_port()?;
+fn get_port(maybe_port_name: Option<String>) -> anyhow::Result<(Box<dyn SerialPort>, String)> {
+    let port_name = select_port(maybe_port_name).expect("failed to select port");
+    println!("{}", port_name);
 
     let port = serialport::new(&port_name, 115_200)
         .timeout(Duration::from_millis(20000))
         .open()
         .expect("Failed to open port");
 
-    Ok(port)
+    Ok((port, port_name))
 }
 
-fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>) -> anyhow::Result<String> {
-    // probably return a checksum?
+fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>, cartridge: Option<Cartridge>) -> anyhow::Result<String> {
+    // TODO: probably return a checksum?
     let path = file.ok_or_else(|| anyhow::anyhow!("No file provided"))?;
     let rom_buffer = fs::read(&path)?;
+
+    // TODO: heuristics to determine cartridge type, but for now assume 2M if not provided
+    let cartridge = cartridge.unwrap_or_else(|| { Cartridge::Cart2M});
+
+    port.write(b"mode f\r").expect("write failed");
+    port.flush().ok();
+    wait_for_str(port, "FLASH");
+
+    // stretch 32k roms to fill all 2M banks, such that they're usable without bank switching
+    let stretched_rom_buffer = match rom_buffer.len() {
+        32_768 => {
+            let mut stretched = Vec::new();
+            // Fill first 127 banks with the first 16k, last bank with the second 16k
+            for _ in 0..127 {
+                stretched.extend_from_slice(&rom_buffer[..16_384]);
+            }
+            stretched.extend_from_slice(&rom_buffer[16_384..]);
+            stretched
+        }
+        _ => rom_buffer.clone(),
+    };
 
     read_output(port);
 
@@ -120,7 +183,7 @@ fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>) -> anyhow::Res
     port.flush().ok();
     wait_for_str(port, "FLASH");
 
-    write_all(port, rom_buffer);
+    write_all(port, stretched_rom_buffer);
 
     port.flush()?;
 
@@ -290,5 +353,6 @@ pub fn write_all(port: &mut Box<dyn SerialPort>, data: Vec<u8>) {
             continue;
         }
         write_bank(port, shifted_bank as u8, &data[start..end]);
+        port.flush().ok();
     }
 }
