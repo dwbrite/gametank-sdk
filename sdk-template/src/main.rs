@@ -37,6 +37,8 @@ fn main(console: &mut Console) {
     // load_background_sprite sets bank to 124, and our draw_background function is in bank 126
     console.set_rom_bank(126);
 
+    console.audio.load_firmware(FIRMWARE);
+
     let mut sequencer = audio_demo::init_demo();
     let mut balls = init_balls();
 

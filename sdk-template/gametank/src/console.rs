@@ -13,7 +13,14 @@ pub struct AudioManager {
 }
 
 impl AudioManager {
-    
+    /// Load audio firmware and enable the audio coprocessor.
+    pub fn load_firmware(&mut self, firmware: &[u8; 4096]) {
+        // Disable audio coprocessor while loading firmware
+        unsafe { core::ptr::write_volatile(self.audio_freq as *mut u8, 0) };
+        self.aram.copy_from_slice(firmware);
+        // Enable audio coprocessor at ~14kHz sample rate
+        unsafe { core::ptr::write_volatile(self.audio_freq as *mut u8, 0xFF) };
+    }
 }
 
 
