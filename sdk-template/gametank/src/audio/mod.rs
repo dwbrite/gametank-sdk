@@ -3,60 +3,46 @@
 //! The GameTank uses a dedicated 6502 coprocessor for audio synthesis.
 //! This module provides the audio firmware and a high-level interface.
 //!
-//! ## Quick Start
+//! ## Quick Start (Wavetable)
 //!
 //! ```rust,ignore
-//! use rom::sdk::audio::{FIRMWARE, voices, MidiNote, WAVETABLE};
+//! use gametank::audio::{FIRMWARE, voices, MidiNote, WAVETABLE};
 //!
-//! // Initialize audio (do once at startup)
-//! console.sc.set_audio(0);                    // Disable while loading
-//! console.audio.copy_from_slice(FIRMWARE);    // Load firmware
-//! console.sc.set_audio(0xFF);                 // Enable at ~14kHz
+//! console.sc.set_audio(0);
+//! console.audio.copy_from_slice(FIRMWARE);
+//! console.sc.set_audio(0xFF);
 //!
-//! // Play a note
 //! let v = voices();
 //! v[0].set_note(MidiNote::C4);
 //! v[0].set_volume(63);
 //! v[0].set_wavetable(WAVETABLE[0]);
 //! ```
 //!
-//! ## Playing Music
-//!
-//! The wavetable synth gives you 8 voices. Each voice has:
-//! - **Note/Frequency** - Set with [`Voice::set_note`](wavetable_8v::Voice::set_note) or raw frequency
-//! - **Volume** - 0 (silent) to 63 (max)
-//! - **Wavetable** - Which of 8 waveforms to use
+//! ## Quick Start (FM)
 //!
 //! ```rust,ignore
-//! let v = voices();
+//! use gametank::audio::{FIRMWARE, channels, MidiNote};
+//! use gametank::audio::fm_4ch::instruments::PIANO;
 //!
-//! // Play a C major chord
-//! v[0].set_note(MidiNote::C4);  v[0].set_volume(50);
-//! v[1].set_note(MidiNote::E4);  v[1].set_volume(50);
-//! v[2].set_note(MidiNote::G4);  v[2].set_volume(50);
+//! console.sc.set_audio(0);
+//! console.audio.copy_from_slice(FIRMWARE);
+//! console.sc.set_audio(0xFF);
 //!
-//! // Stop a voice
-//! v[0].mute();
-//! ```
-//!
-//! ## Custom Wavetables
-//!
-//! You can load custom 256-byte waveforms into the wavetable slots:
-//!
-//! ```rust,ignore
-//! // Wavetables live at $3400-$3BFF in audio RAM (8 × 256 bytes)
-//! let waveform: [u8; 256] = make_sine_wave();
-//! console.audio[0x400..0x500].copy_from_slice(&waveform);
+//! let ch = channels();
+//! ch[0].load_instrument(&PIANO);
+//! ch[0].set_note(MidiNote::C4);
+//! ch[0].note_on();
+//! // call ch[0].tick() once per frame to advance the ADSR envelope
 //! ```
 //!
 //! ## Audio Firmware
 //!
-//! Enable a firmware via Cargo features:
-//! - `audio-wavetable-8ch` - 8-channel wavetable synth (default, recommended)
-//! - `audio-wavetable-7ch-linear` - 7-channel wavetable synth with linear volume (16 levels)
+//! Enable exactly one firmware via Cargo features:
+//! - `audio-wavetable-8ch` — 8-channel wavetable synth
+//! - `audio-wavetable-7ch-linear` — 7-channel wavetable synth, linear 16-level volume
+//! - `audio-fm-4ch` — 4-channel FM synth (4 operators/channel), mirrors the C SDK
 //!
-//! The firmware runs on the Audio Coprocessor at ~14kHz sample rate,
-//! with about 660 CPU cycles available per sample for synthesis.
+//! The firmware runs on the Audio Coprocessor at ~14 kHz sample rate.
 
 // Audio firmware binary - selected via Cargo.toml features
 #[cfg(feature = "audio-wavetable-8ch")]
@@ -64,6 +50,9 @@ pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-8ch.b
 
 #[cfg(feature = "audio-wavetable-7ch-linear")]
 pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-7ch-linear.bin");
+
+#[cfg(feature = "audio-fm-4ch")]
+pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/fm-4ch.bin");
 
 // Audio interface modules - selected via Cargo.toml features
 #[cfg(feature = "audio-wavetable-8ch")]
@@ -76,7 +65,11 @@ pub mod wavetable_7ch_linear;
 #[cfg(feature = "audio-wavetable-7ch-linear")]
 pub use wavetable_7ch_linear::*;
 
+#[cfg(feature = "audio-fm-4ch")]
+pub mod fm_4ch;
+#[cfg(feature = "audio-fm-4ch")]
+pub use fm_4ch::*;
+
 // Shared
 pub mod pitch_table;
 pub use pitch_table::MidiNote;
-

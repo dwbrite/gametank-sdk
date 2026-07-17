@@ -1,5 +1,26 @@
 What if Rust, on [GameTank](https://gametank.zone/)?
 
+<!-- Regenerate this via `npx doctoc README.md` -->
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+- [What?](#what)
+- [Why?](#why)
+- [How?](#how)
+- [GameTank SDK (Rust)](#gametank-sdk-rust)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [Editor Setup](#editor-setup)
+  - [Windows Setup](#windows-setup)
+    - [Option 1: Use Prebuilt Binaries](#option-1-use-prebuilt-binaries)
+    - [Option 2: WSL (Recommended for Development)](#option-2-wsl-recommended-for-development)
+    - [Option 3: Native Windows with Rust](#option-3-native-windows-with-rust)
+  - [Advanced: Manual Container Commands](#advanced-manual-container-commands)
+  - [Advanced: Nix Flake](#advanced-nix-flake)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # What?
 
 The GameTank is a retro-inspired game console running dual 6502 processors. 
@@ -33,12 +54,11 @@ Development is done in VSCode (sry), and there's a `.vscode/settings.json` for t
 
 ## Requirements
 
-- `Podman` (or Docker, either should work, but Podman is tested and easier to set up)
+- `Podman/Docker` - Either container manager should work, but Podman is tested and easier to set up. If you're on Windows or MacOS, you'll likely want to use Podman Desktop.
+- `nix` - If you prefer to use the included flake file instead of a container, this provides an environment for building roms as well as a shell with Rust's tools preloaded. For Linux users this will also give you development libraries needed to compile and use the emulator.
 - `Rust`*
 
 > It's technically possible to make GameTank games using Rust without installing Rust at all! But you probably won't have rust-analyzer support, which isn't very fun.
-
-If you're on Windows or MacOS, you'll likely want to use Podman Desktop.
 
 See **Windows Setup** for further details on setting up Windows.
 
@@ -136,5 +156,24 @@ find . -name "*.asm" -exec bash -c 'filename=$(basename "{}" .asm); echo "Assemb
 llvm-ar rcs target/asm/libasm.a target/asm/*.o && rm target/asm/*.o
 
 # Inside container: build with cargo+mos
-cargo +mos build --release -Z build-std=core --target mos-unknown-none
+cargo +mos build --release
+```
+
+## Advanced: Nix Flake
+
+For ROM development or contributing to the SDK, a Nix flake is available as an alternative option.
+It is available in the `sdk-template/` folder, aka the `gametank/` folder of a generated rom project.
+
+```bash
+# Enter the shell
+nix develop
+
+# Manually build your game project as noted above
+cargo +mos build --release
+
+# Run any of the SDK binaries in your local environment
+cargo run -p gametank-sdk --bin gtrom -- init
+
+# ...or run one-off commands
+nix develop --command bash -c "cargo run -p gametank-sdk --bin gte -- rom.gtr"
 ```

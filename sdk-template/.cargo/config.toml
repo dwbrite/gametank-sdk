@@ -1,3 +1,6 @@
+[build]
+target = "mos-unknown-none"
+
 [target.mos-unknown-none]
 rustflags = [
     "-C", "link-arg=-nostartfiles",
