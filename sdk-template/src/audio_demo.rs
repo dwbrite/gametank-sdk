@@ -1,125 +1,136 @@
-//! Audio demo module - example chord progressions and sequencing
+//! Audio demo module - example chord progressions and sequencing.
 //!
-//! This module works with both 7ch-linear (0-16 volume) and 8ch (0-63 volume) firmwares.
+//! Supports all three firmwares via Cargo features:
+//! - `audio-wavetable-8ch` - 8 voices, volume 0-63
+//! - `audio-wavetable-7ch-linear` - 7 voices, volume 0-16
+//! - `audio-fm-4ch` - 4 FM channels, 4 operators each, full ADSR per operator
 
-use gametank::audio::{voices, MidiNote, WAVETABLE, VOICE_COUNT};
-
-// Detect which firmware we're using based on available features
-#[cfg(feature = "audio-wavetable-7ch-linear")]
-const MAX_VOLUME: u8 = 16;
 #[cfg(feature = "audio-wavetable-8ch")]
 const MAX_VOLUME: u8 = 63;
+#[cfg(feature = "audio-wavetable-7ch-linear")]
+const MAX_VOLUME: u8 = 16;
 
-// Both firmwares now have full-amplitude sine at WAVETABLE[0]
-const SINE_WAVETABLE: u16 = WAVETABLE[0];
-
-/// Sequencer state for the demo
+/// Sequencer state for the FM demo (4-channel FM firmware).
+///
+/// Mirrors the C SDK demo flow: builds up a Cmaj7 chord across channels,
+/// plays an arpeggio melody, then lets the ADSR envelopes decay to silence.
+#[cfg(feature = "audio-fm-4ch")]
 pub struct DemoSequencer {
-    /// Frame counter (resets every 60 frames = 1 second at 60fps)
     frame: u16,
-    /// Current step in the sequence
-    step: u8,
-    /// Background chord volume level
-    bg_level: u8,
-    /// Melody voice volume level
-    melody_level: u8,
-    /// Counter for background fade timing
-    bg_fade_counter: u8,
-    /// Counter for melody fade timing
+    step:  u8,
+}
+
+/// Sequencer state for the wavetable demo (8ch or 7ch-linear firmware).
+#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
+pub struct DemoSequencer {
+    frame:               u16,
+    step:                u8,
+    bg_level:            u8,
+    melody_level:        u8,
+    bg_fade_counter:     u8,
     melody_fade_counter: u8,
 }
 
+#[cfg(feature = "audio-fm-4ch")]
+impl DemoSequencer {
+    pub const fn new() -> Self { Self { frame: 0, step: 0 } }
+
+    /// Call once per frame (60 fps). Advances ADSR envelopes and the sequence.
+    pub fn tick(&mut self) {
+        use gametank::audio::{channels, flush_params, MidiNote, silence_all};
+
+        let mut ch = channels();
+
+        // Advance ADSR envelopes every frame (mirrors tick_music() decay loop)
+        for c in ch.iter_mut() {
+            c.tick();
+        }
+
+        match self.step {
+            // Build Cmaj7 chord, one note per second across channels 0-2
+            1 => { if self.frame == 0 { ch[0].set_note(MidiNote::C4); ch[0].note_on(); } }
+            2 => { if self.frame == 0 { ch[1].set_note(MidiNote::E4); ch[1].note_on(); } }
+            3 => { if self.frame == 0 { ch[1].set_note(MidiNote::G4); ch[1].note_on(); } }
+            4 => { if self.frame == 0 { ch[2].set_note(MidiNote::B4); ch[2].note_on(); } }
+
+            // Arpeggio melody on channel 3 (GUITAR decays to silence naturally)
+            5..=8 => {
+                if self.step == 7 {
+                    match self.frame {
+                        0  => { ch[3].set_note(MidiNote::E5); ch[3].note_on(); }
+                        20 => { ch[3].set_note(MidiNote::B4); ch[3].note_on(); }
+                        40 => { ch[3].set_note(MidiNote::G4); ch[3].note_on(); }
+                        _  => {}
+                    }
+                }
+            }
+
+            9 => { if self.frame == 0 { silence_all(); } }
+            _ => {}
+        }
+
+        flush_params();
+
+        self.frame += 1;
+        if self.frame >= 60 {
+            self.frame = 0;
+            self.step += 1;
+        }
+    }
+}
+
+#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
 impl DemoSequencer {
     pub const fn new() -> Self {
         Self {
-            frame: 0,
-            step: 0,
-            bg_level: MAX_VOLUME,
-            melody_level: MAX_VOLUME,
-            bg_fade_counter: 0,
-            melody_fade_counter: 0,
+            frame: 0, step: 0,
+            bg_level: MAX_VOLUME, melody_level: MAX_VOLUME,
+            bg_fade_counter: 0, melody_fade_counter: 0,
         }
     }
 
-    /// Call once per frame (60fps). Advances the sequence.
+    /// Call once per frame (60 fps). Advances the sequence.
     pub fn tick(&mut self) {
-        let v = voices();
-        // Use the last voice for melody (works with both 7ch and 8ch)
-        let melody_voice = 5;
+        use gametank::audio::{voices, MidiNote, VOICE_COUNT};
 
-        // Process current step BEFORE incrementing (matches original timing)
+        let v = voices();
+        let melody_voice = VOICE_COUNT - 1;
+
         match self.step {
             // Build up Cmaj7 chord, one note per second
-            1 => {
-                if self.frame == 0 {
-                    v[0].set_note(MidiNote::C4);
-                    v[0].set_volume(self.bg_level);
-                }
-            }
-            2 => {
-                if self.frame == 0 {
-                    v[1].set_note(MidiNote::E4);
-                    v[1].set_volume(self.bg_level);
-                }
-            }
-            3 => {
-                if self.frame == 0 {
-                    v[2].set_note(MidiNote::G4);
-                    v[2].set_volume(self.bg_level);
-                }
-            }
-            4 => {
-                if self.frame == 0 {
-                    v[3].set_note(MidiNote::B4);
-                    v[3].set_volume(self.bg_level);
-                }
-            }
-            // Step 5: Add D5
-            5 => {
-                if self.frame == 0 {
-                    v[4].set_note(MidiNote::D5);
-                    v[4].set_volume(self.bg_level);
-                }
-            }
+            1 => { if self.frame == 0 { v[0].set_note(MidiNote::C4); v[0].set_volume(self.bg_level); } }
+            2 => { if self.frame == 0 { v[1].set_note(MidiNote::E4); v[1].set_volume(self.bg_level); } }
+            3 => { if self.frame == 0 { v[2].set_note(MidiNote::G4); v[2].set_volume(self.bg_level); } }
+            4 => { if self.frame == 0 { v[3].set_note(MidiNote::B4); v[3].set_volume(self.bg_level); } }
+            5 => { if self.frame == 0 { v[4].set_note(MidiNote::D5); v[4].set_volume(self.bg_level); } }
 
-            // Steps 6-9: Arpeggio melody on last voice, fade background
+            // Steps 6-9: arpeggio melody, fade background
             6..=9 => {
-                // Reset fade counter at start of step 6
                 if self.step == 6 && self.frame == 0 {
                     self.bg_fade_counter = 0;
                     v[melody_voice].set_volume(self.melody_level);
                 }
-
-                // Play arpeggio pattern during step 8
                 if self.step == 8 {
                     match self.frame {
-                        0 => v[melody_voice].set_note(MidiNote::E5),
+                        0  => v[melody_voice].set_note(MidiNote::E5),
                         20 => v[melody_voice].set_note(MidiNote::B4),
                         40 => v[melody_voice].set_note(MidiNote::G4),
-                        _ => {}
+                        _  => {}
                     }
                 }
-
-                // Fade out background chord using counter instead of modulo
-                // For 8ch (0-63): fade every 3 frames (240/3=80 updates, covers 63->0)
-                // For 7ch (0-16): fade every 14 frames (240/14=17 updates, covers 16->0)
                 const BG_FADE_INTERVAL: u8 = if MAX_VOLUME > 32 { 3 } else { 14 };
                 self.bg_fade_counter += 1;
                 if self.bg_fade_counter >= BG_FADE_INTERVAL {
                     self.bg_fade_counter = 0;
                     if self.bg_level > 0 {
                         self.bg_level -= 1;
-                        // Apply volume to all background voices
-                        for i in 0..5 {
-                            v[i].set_volume(self.bg_level);
-                        }
+                        for i in 0..5 { v[i].set_volume(self.bg_level); }
                     }
                 }
             }
 
             // Fade out melody
             10..=26 => {
-                // Scale fade rate: 8ch needs faster fade (more levels to cover)
                 const MELODY_FADE_INTERVAL: u8 = if MAX_VOLUME > 32 { 2 } else { 12 };
                 self.melody_fade_counter += 1;
                 if self.melody_fade_counter >= MELODY_FADE_INTERVAL {
@@ -131,11 +142,9 @@ impl DemoSequencer {
                 }
             }
 
-            // Sequence complete
             _ => {}
         }
 
-        // Increment counters AFTER processing (matches original)
         self.frame += 1;
         if self.frame >= 60 {
             self.frame = 0;
@@ -144,15 +153,31 @@ impl DemoSequencer {
     }
 }
 
-/// Initialize voices for the demo (set wavetables, mute all)
+#[cfg(feature = "audio-fm-4ch")]
 pub fn init_demo() -> DemoSequencer {
-    let v = voices();
+    use gametank::audio::{channels, flush_params, silence_all};
+    use gametank::audio::fm_4ch::instruments::{PIANO, SITAR};
 
-    // Set all voices to use the full-amplitude sine wavetable and mute
+    let mut ch = channels();
+    ch[0].load_instrument(&PIANO);
+    ch[1].load_instrument(&PIANO);
+    ch[2].load_instrument(&PIANO);
+    ch[3].load_instrument(&SITAR);
+
+    silence_all();
+    flush_params();
+
+    DemoSequencer::new()
+}
+
+#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
+pub fn init_demo() -> DemoSequencer {
+    use gametank::audio::{voices, WAVETABLE};
+
+    let v = voices();
     for voice in v.iter_mut() {
-        voice.set_wavetable(SINE_WAVETABLE);
+        voice.set_wavetable(WAVETABLE[0]);
         voice.set_volume(0);
     }
-
     DemoSequencer::new()
 }
