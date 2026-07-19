@@ -13,6 +13,7 @@
   - [How the audio firmware works](#how-the-audio-firmware-works)
   - [How firmware is built](#how-firmware-is-built)
   - [How firmware is loaded onto hardware](#how-firmware-is-loaded-onto-hardware)
+  - [Modifying wavetable waveforms](#modifying-wavetable-waveforms)
   - [Modifying / adding FM instruments](#modifying--adding-fm-instruments)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -101,16 +102,18 @@ without racing the ACP's per-sample read of those same locations.
 
 - **FM firmware** (`gametank/audiofw-src/fm-4ch/`) is ca65 assembly
   ported directly from the C SDK. `gametank/build.rs` automatically
-  assembles and links it (`ca65 --cpu 65c02 && ld65 -C gametank-acp.cfg`)
-  into `gametank/audiofw/fm-4ch.bin` whenever the `audio-fm-4ch` feature
-  is enabled. This requires `ca65`/`ld65` on `PATH`, which the container
-  and nix devShell provides. The linker config (`gametank-acp.cfg`) lays
-  out zero page ($0-$FF), stack, and code to produce an exact 4096-byte
-  image matching the ACP's address space.
+  assembles and links it into `gametank/audiofw/fm-4ch.bin` whenever
+  the `audio-fm-4ch` feature is enabled. This requires `ca65`/`ld65`,
+  which the container and nix devShell provide. The linker config
+  (`gametank-acp.cfg`) lays out zero page ($0-$FF), stack, and code
+  to produce an exact 4096-byte image matching the ACP's address space.
 - **Wavetable firmwares** (`gametank/audiofw-src/wavetable-8ch/`,
-  `wavetable-7ch-linear/`) are llvm-mos-style assembly and their resulting
-  binaries are checked in directly at `gametank/audiofw/wavetable-8ch.bin` /
-  `wavetable-7ch-linear.bin`/ There's no automated build step for these yet.
+  `wavetable-7ch-linear/`) are llvm-mos-style assembly. `gametank/build.rs`
+  automatically assembles and links them into `gametank/audiofw/wavetable-*.bin`
+  whenever the corresponding feature is enabled. This requires `mos-clang`
+  and `llvm-objcopy`, which the container and nix devShell provide.
+  If those tools are not available the pre-built binary in `audiofw/`
+  is used as a fallback.
 
 All three binaries are embedded into the ROM via `include_bytes!` in
 `gametank/src/audio/mod.rs`. Depending on which `audio-*` feature flag
@@ -132,6 +135,139 @@ From then on, gameplay code writes note/pitch/volume/envelope parameters
 directly into the appropriate ACP RAM offsets or via the FM firmware's
 buffered Inputs/NMI path and the ACP picks them up on its next sample tick.
 See `gametank/src/audio/mod.rs` and `gametank/src/audio/fm_4ch/mod.rs` for more details.
+
+### Modifying wavetable waveforms
+
+A wavetable is a 256-byte buffer that describes one complete oscillation cycle
+of a waveform. The ACP steps through it at a rate determined by the voice's
+frequency increment, looping continuously. Changing the shape of the buffer
+changes the timbre of every voice that uses it.
+
+#### Waveform format
+
+Each byte is an **unsigned 8-bit PCM sample**:
+
+| Value         | Meaning             |
+|---------------|---------------------|
+| `0x80`        | Zero / silence (DC midpoint) |
+| `0x81`-`0xFF` | Positive half-cycle |
+| `0x00`-`0x7F` | Negative half-cycle |
+
+The 256 entries represent one full period. Index `0` is the start of the cycle,
+index `127` is approximately the midpoint, index `255` is the last sample before
+it wraps back to index `0`.
+
+#### Available slots
+
+The firmware ships with **one pre-loaded waveform** (a sine wave) in the first
+slot — this is baked into the firmware binary at link time from
+`audiofw-src/<firmware>/wave.asm`. All remaining slots are zeroed on startup.
+
+| Firmware | Slots | Slot addresses (`WAVETABLE[n]`) |
+|----------|-------|---------------------------------|
+| `audio-wavetable-8ch` | 11 | `0x0300`, `0x0400` … `0x0D00` |
+| `audio-wavetable-7ch-linear` | 6 | `0x0600`, `0x0700` … `0x0B00` |
+
+The `WAVETABLE` constant array exported from `gametank::audio` holds the
+ACP-side address for each slot. Pass one of these to `voice.set_wavetable()`.
+
+#### Writing a custom waveform at runtime
+
+After calling `load_firmware`, write 256 bytes into ACP RAM at the slot's ACP
+address offset using `console.audio.aram`. The slice index equals the ACP-side address:
+
+```rust
+use gametank::audio::{WAVETABLE, voices, MidiNote};
+
+// Build a square wave
+let mut square = [0u8; 256];
+for i in 0..128 { square[i] = 0xFF; } // top half
+for i in 128..256 { square[i] = 0x00; } // bottom half
+
+// Write it into slot 1 (WAVETABLE[1] = 0x0400 for 8ch)
+let slot = WAVETABLE[1] as usize;
+console.audio.aram[slot..slot + 256].copy_from_slice(&square);
+
+// Point a voice at the new slot
+let v = voices();
+v[0].set_note(MidiNote::C4);
+v[0].set_volume(63);
+v[0].set_wavetable(WAVETABLE[1]);
+```
+
+**Do this after `load_firmware` and before the voices start playing.** Writing
+to a slot while a voice is actively reading it will produce a brief glitch as
+the ACP picks up the mid-write state.
+
+#### Common waveform shapes
+
+All of these are drop-in replacements for the body of the example above.
+
+```rust
+// Sine wave (the firmware default, reproduced here for reference)
+let mut sine = [0u8; 256];
+for i in 0..256usize {
+    let radians = core::f32::consts::TAU * i as f32 / 256.0;
+    sine[i] = (libm::sinf(radians) * 127.0 + 128.0) as u8;
+}
+
+// Sawtooth: ramp from 0x00 to 0xFF
+let mut saw = [0u8; 256];
+for i in 0..256usize { saw[i] = i as u8; }
+
+// Triangle: ramp up then down
+let mut tri = [0u8; 256];
+for i in 0..128usize { tri[i] = (i * 2) as u8; }
+for i in 128..256usize { tri[i] = (255 - (i - 128) * 2) as u8; }
+
+// Square (50% duty cycle)
+let mut sq = [0u8; 256];
+for i in 0..128 { sq[i] = 0xFF; }
+for i in 128..256 { sq[i] = 0x00; }
+
+// Pulse (25% duty cycle - brighter, thinner)
+let mut pulse = [0u8; 256];
+for i in 0..64 { pulse[i] = 0xFF; }
+for i in 64..256 { pulse[i] = 0x00; }
+```
+
+**no_std note:** `f32::sin` is not available directly (no standard library).
+Given the CPU constraints it is better to pre-compute wavetable data on the
+host and embed it as a `const [u8; 256]`. But if necessary, there are
+`no_std`-compatible math crates such as `libm` and `micromath`. The simplest
+approach is to unroll the loops and just write them out as byte literals.
+
+#### Multi-timbral setup
+
+Each voice independently points at any slot, so you can run different timbres
+simultaneously across the available voices:
+
+```rust
+let v = voices();
+v[0].set_wavetable(WAVETABLE[1]); // instrument 1
+v[1].set_wavetable(WAVETABLE[1]);
+v[2].set_wavetable(WAVETABLE[2]); // instrument 2
+v[3].set_wavetable(WAVETABLE[2]);
+v[4].set_wavetable(WAVETABLE[2]);
+v[5].set_wavetable(WAVETABLE[3]); // etc.
+```
+
+#### 7ch-linear differences
+
+The `audio-wavetable-7ch-linear` firmware reserves addresses `$0200`–`$05FF`
+for four internal volume scaling tables. Do not overwrite this range.
+Doing so will break volume control on all voices. Custom waveforms must be
+placed in slots 1-5 (addresses `$0700`-`$0B00`); slot 0 at `$0600` holds
+the pre-loaded sine and can also be overwritten once firmware is loaded.
+
+#### Changing the default (pre-loaded) waveform
+
+Slot 0 is populated from `gametank/audiofw-src/<firmware>/wave.asm` at link
+time. To change what ships with the firmware binary, edit that file - it's a
+256-byte `.byte` table in the `.const.wavetables` section. After editing,
+`cargo +mos build` will automatically reassemble the firmware and the new
+waveform will be present from the moment `load_firmware` is called, without
+any runtime `copy_from_slice` needed.
 
 ### Modifying / adding FM instruments
 
