@@ -128,8 +128,10 @@
             ]
             ++ pkgs.lib.optionals (pkgs.lib.strings.hasInfix "linux" system) [
               alsa-lib
+              libclang # needed to recompile the sdk crate with libretro-rs-ffi
               libudev-zero
               libx11
+              libxi
               libxcursor
               vulkan-loader
             ];
@@ -155,10 +157,14 @@
             echo "gte rom.gtr"
           '';
 
+          LIBCLANG_PATH = "${pkgs.libclang.lib}/lib";
+          BINDGEN_EXTRA_CLANG_ARGS = "-isystem ${pkgs.glibc.dev}/include";
+
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
             with pkgs;
             [
               libx11
+              libxi
               libxcursor
               libxkbcommon
               vulkan-loader
