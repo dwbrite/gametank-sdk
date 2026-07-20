@@ -81,9 +81,5 @@ structopt = "0.3.26"
 crc32fast = "1.5.0"
 tempfile = "3.20.0"
 
-[build-dependencies]
-flate2 = "1"
-tar = "0.4"
-
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 thread-priority = "1.1.0"
