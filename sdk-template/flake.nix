@@ -133,13 +133,15 @@
               libx11
               libxi
               libxcursor
+              SDL2 # needed to run C-based emulator
               vulkan-loader
-            ];
+            ]
+            ++ [ llvm-mos ]; # provides mos-clang/lld used by build scripts and rustc
 
           shellHook = ''
             # Expose cargo (managed by rustup) and the llvm-mos toolchain
             # (mos-clang/lld) that rustc invokes to link.
-            export PATH="$HOME/.cargo/bin:${llvm-mos}/bin:$PATH"
+            export PATH="$HOME/.cargo/bin:$PATH"
 
             # Link rust-mos as the 'mos' named toolchain so that
             #   cargo +mos build -Z build-std=core --target mos-unknown-none
