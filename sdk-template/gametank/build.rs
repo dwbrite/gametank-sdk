@@ -132,12 +132,7 @@ fn assemble_fm_firmware(manifest: &str, out_dir: &str, fw_dir: &Path) {
     let obj = Path::new(out_dir).join("fm-4ch.o");
     let bin = fw_dir.join("fm-4ch.bin");
 
-    println!("cargo:rerun-if-changed={}", asm_src.display());
-    println!("cargo:rerun-if-changed={}", cfg.display());
-    println!(
-        "cargo:rerun-if-changed={}",
-        src_dir.join("sine_256_-63_63.bin").display()
-    );
+    println!("cargo:rerun-if-changed={}", src_dir.display());
 
     let result = Command::new("ca65")
         .args(["--cpu", "65c02", "--bin-include-dir"])
