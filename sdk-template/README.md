@@ -9,14 +9,15 @@
 - [Building and flashing](#building-and-flashing)
 - [Development with nix](#development-with-nix)
 - [Audio](#audio)
-  - [Audio Cargo features](#audio-cargo-features)
-  - [How the audio firmware works](#how-the-audio-firmware-works)
-  - [How firmware is built](#how-firmware-is-built)
-  - [How firmware is loaded onto hardware](#how-firmware-is-loaded-onto-hardware)
-  - [Modifying wavetable waveforms](#modifying-wavetable-waveforms)
-  - [Modifying / adding FM instruments](#modifying--adding-fm-instruments)
+  - [Choosing a firmware](#choosing-a-firmware)
+  - [Initialization](#initialization)
+  - [Importing gt-tracker tracks](#importing-gt-tracker-tracks)
+  - [Firmware technical details](#firmware-technical-details)
+  - [Wavetables](#wavetables)
+  - [FM synthesis](#fm-synthesis)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 ## Building and flashing
 
@@ -35,6 +36,7 @@ gtrom run
 gtrom flash
 ```
 
+
 ## Development with nix
 
 For development outside the container, there is also a nix flake option.
@@ -46,31 +48,132 @@ cargo +mos build --release
 
 ## Audio
 
-### Audio Cargo features
+
+### Choosing a firmware
 
 Exactly one audio firmware is selected at build time via Cargo
 features on the `rom` crate:
 
-| Feature | Firmware | Notes |
-|---------|----------|----------|
-| `audio-fm-4ch` | 4-channel FM synth | ADSR envelopes per operator |
-| `audio-wavetable-7ch-linear` | 7-channel wavetable synth | linear volume 0-16 |
-| `audio-wavetable-8ch` (default) | 8-channel wavetable synth | volume 0-63 |
+| cargo feature                   | firmware                  | description                 |
+| ------------------------------- | ------------------------- | --------------------------- |
+| `audio-fm-4ch`                  | 4-channel FM synth        | ADSR envelopes per operator |
+| `audio-wavetable-7ch-linear`    | 7-channel wavetable synth | linear volume 0-16          |
+| `audio-wavetable-8ch` (default) | 8-channel wavetable synth | volume 0-63                 |
 
 Build with a specific backend using `--no-default-features --features <name>`:
 
 ```sh
-# Default FM synth, no feature flags needed
+# FM synthesis
 cargo +mos build --release --no-default-features --features audio-fm-4ch
 
 # 7-channel wavetable synth (linear volume)
 cargo +mos build --release --no-default-features --features audio-wavetable-7ch-linear
 
-# 8-channel wavetable synth
+# Default 8-channel wavetable synth
 cargo +mos build --release
 ```
 
-### How the audio firmware works
+Currently, only the wavetable-8ch firmware is supported by `gtt`, the GameTank music tracker.
+
+
+### Initialization
+
+Before any audio is available `src/main.rs` invokes `AudioManager::load_firmware`.
+
+```rust
+console.audio.load_firmware(FIRMWARE);
+```
+
+From then on, gameplay code writes note/pitch/volume/envelope parameters
+directly into the appropriate ACP RAM offsets or via the FM firmware's
+buffered inputs/NMI path and the ACP picks them up on its next sample tick.
+See `gametank/src/audio/mod.rs` and `gametank/src/audio/fm_4ch/mod.rs` for more details.
+
+
+### Importing gt-tracker tracks
+
+1. Follow the `gtt` instructions for creating and exporting a track.
+2. Copy the exported `instruments/` folder and `wave.asm` into the firmware source directory, replacing the existing ones: `gametank/audiofw-src/wavetable-8ch/`
+3. Copy the pattern data (my-song.asm file) into the assembly source folder, `src/asm/`. The next `cargo build` will reassemble the firmware and any tracks in `src/asm/`
+4. Use `gametank::audio::TrackSequencer` in your main loop
+
+```rust
+use gametank::audio::{FIRMWARE, TrackSequencer};
+
+unsafe extern "C" { static mysong_track: u8; }  // defined in src/asm/mysong.asm
+
+fn main(console: &mut Console) {
+    console.audio.load_firmware(FIRMWARE);
+
+    let mut sequencer = TrackSequencer::new(unsafe { &mysong_track as *const u8 });
+    sequencer.init_voices();
+
+    loop {
+        unsafe { wait(); }
+        console.flip_framebuffers();
+        sequencer.tick();  // called every frame
+    }
+}
+```
+
+For multiple tracks, create one `TrackSequencer` per track and call `tick()` on whichever is currently active.
+
+**Note on shared instruments:** the ACP firmware has 11 fixed instrument slots for the whole ROM.
+If you export multiple tracks into one project, ensure `wave.asm` and `instruments/` contain all the shared instruments needed.
+
+
+### Wavetables
+
+| firmware                     | slots | slot addresses (`WAVETABLE[n]`) |
+| ---------------------------- | ----- | ------------------------------- |
+| `audio-wavetable-8ch`        | 11    | `0x0300`, `0x0400` … `0x0D00`   |
+| `audio-wavetable-7ch-linear` | 6     | `0x0600`, `0x0700` … `0x0B00`   |
+
+The `WAVETABLE` constant array exported from `gametank::audio` holds the
+ACP-side address for each slot. Pass one of these to `voice.set_wavetable()`.
+
+The `audio-wavetable-7ch-linear` firmware reserves address range `$0200`-`$05FF`
+for four internal volume scaling tables. Custom waveforms must be placed in slots
+1-5 (addresses `$0700`-`$0B00`); slot 0 at `$0600` holds the pre-loaded sine and
+can also be overwritten once firmware is loaded.
+
+
+### FM synthesis
+
+At the cost of the number of channels, this firmware offers more complex instruments.
+If you're new to FM synthesis then much of this terminology can be confusing.
+A tutorial is outside the scope of this example, but a few online resources to
+get you started:
+
+- Sega's YM2612 specification - https://www.smspower.org/maxim/Documents/YM2612#page5
+- Andrew Huang's FM SYNTHS in under 4 minutes - https://youtu.be/vvBl3YUBUyY
+
+Users of the Yamaha YM2612 will recognize this firmware as functioning in the
+YM2612 algorithm #0 layout (see table diagram in the link Sega URL).
+
+To give a head start on trying it out, predefined instruments live in `gametank/src/audio/fm_4ch/instruments.rs` as constants.
+
+**To add a new instrument**, define a new `pub const Instrument { .. }` with
+your own envelope/transpose/feedback values and load it onto a channel with
+`Channel::load_instrument(&YOUR_INSTRUMENT)`. No firmware rebuild is needed
+since these values are just data pushed into the ACP's zero page at runtime.
+`op_transpose` values set the harmonic ratio between operators (e.g. `[0, 0, 0, 0]`
+for unison, `[12, 36, 0, 24]` for a spread of octave/detuned ratios).
+`env_decay` values use a sign-aware trick (`(sustain - amplitude) ^ decay`) so
+a "negative" high-bit-set decay byte can ramp up toward sustain instead of down.
+
+**To change the synthesis algorithm itself** (operator routing, channel
+count, sine table, feedback topology, etc.) you need to edit the actual ACP
+program at `gametank/audiofw-src/fm-4ch/audio_fw.asm` and run `cargo build` to aeassemble it.
+
+Note the firmware's 4x4 channel/operator count and zero-page memory map are fixed
+by the `doChannel` macro being invoked exactly 4 times in the IRQ handler and
+by `gametank-acp.cfg`'s layout. Changing those counts means updating both the
+assembly and the corresponding Rust-side offsets/array sizes in
+`fm_4ch/mod.rs` to match.
+
+
+### Firmware technical details
 
 The GameTank has a dedicated [Audio CoProcessor (ACP)](https://wiki.gametank.zone/doku.php?id=hardware:audio),
 a second 6502-family CPU that runs its own small firmware image independently of the main CPU,
@@ -78,7 +181,7 @@ at a fixed ~14 kHz sample rate, producing a single bipolar 8-bit sample per tick
 The main CPU controls it through a few memory-mapped registers:
 
 | Address | Register | Purpose |
-|---------|----------|---------|
+| ------- | -------- | ------- |
 | `$2000` | `audio_reset` | Reset control for the ACP |
 | `$2001` | `audio_nmi`   | Write `1` to fire an NMI on the ACP (see below) |
 | `$2006` | `audio_freq`  | Sample rate / enable (`0` = paused, `0xFF` = ~14 kHz) |
@@ -98,8 +201,6 @@ value, ..., 0]` and pokes each `(addr, value)` pair directly into its own
 zero page. This is how the main CPU updates pitch/amplitude/feedback
 without racing the ACP's per-sample read of those same locations.
 
-### How firmware is built
-
 - **FM firmware** (`gametank/audiofw-src/fm-4ch/`) is ca65 assembly
   ported directly from the C SDK. `gametank/build.rs` automatically
   assembles and links it into `gametank/audiofw/fm-4ch.bin` whenever
@@ -115,198 +216,7 @@ without racing the ACP's per-sample read of those same locations.
   If those tools are not available the pre-built binary in `audiofw/`
   is used as a fallback.
 
-All three binaries are embedded into the ROM via `include_bytes!` in
-`gametank/src/audio/mod.rs`. Depending on which `audio-*` feature flag
-is active, that one will be exposed as `gametank::audio::FIRMWARE`.
+All three binaries are embedded into the ROM in `gametank/src/audio/mod.rs`.
+Depending on which `audio-*` feature flag is active, that one will be exposed
+as `gametank::audio::FIRMWARE`.
 
-### How firmware is loaded onto hardware
-
-Before any audio is available `src/main/rs` invokes `AudioManager::load_firmware`.
-
-```rust
-console.audio.load_firmware(FIRMWARE);
-```
-
-1. Write `0` to `audio_freq` ($2006) to pause the ACP's sample clock.
-2. Copy the entire 4096-byte firmware image into ACP RAM at `$3000` (`self.aram.copy_from_slice(firmware)`), overwriting whatever was there - code, zero page defaults, and all.
-3. Write `0xFF` to `audio_freq` to resume the sample clock at ~14 kHz.
-
-From then on, gameplay code writes note/pitch/volume/envelope parameters
-directly into the appropriate ACP RAM offsets or via the FM firmware's
-buffered Inputs/NMI path and the ACP picks them up on its next sample tick.
-See `gametank/src/audio/mod.rs` and `gametank/src/audio/fm_4ch/mod.rs` for more details.
-
-### Modifying wavetable waveforms
-
-A wavetable is a 256-byte buffer that describes one complete oscillation cycle
-of a waveform. The ACP steps through it at a rate determined by the voice's
-frequency increment, looping continuously. Changing the shape of the buffer
-changes the timbre of every voice that uses it.
-
-#### Waveform format
-
-Each byte is an **unsigned 8-bit PCM sample**:
-
-| Value         | Meaning             |
-|---------------|---------------------|
-| `0x80`        | Zero / silence (DC midpoint) |
-| `0x81`-`0xFF` | Positive half-cycle |
-| `0x00`-`0x7F` | Negative half-cycle |
-
-The 256 entries represent one full period. Index `0` is the start of the cycle,
-index `127` is approximately the midpoint, index `255` is the last sample before
-it wraps back to index `0`.
-
-#### Available slots
-
-The firmware ships with **one pre-loaded waveform** (a sine wave) in the first
-slot — this is baked into the firmware binary at link time from
-`audiofw-src/<firmware>/wave.asm`. All remaining slots are zeroed on startup.
-
-| Firmware | Slots | Slot addresses (`WAVETABLE[n]`) |
-|----------|-------|---------------------------------|
-| `audio-wavetable-8ch` | 11 | `0x0300`, `0x0400` … `0x0D00` |
-| `audio-wavetable-7ch-linear` | 6 | `0x0600`, `0x0700` … `0x0B00` |
-
-The `WAVETABLE` constant array exported from `gametank::audio` holds the
-ACP-side address for each slot. Pass one of these to `voice.set_wavetable()`.
-
-#### Writing a custom waveform at runtime
-
-After calling `load_firmware`, write 256 bytes into ACP RAM at the slot's ACP
-address offset using `console.audio.aram`. The slice index equals the ACP-side address:
-
-```rust
-use gametank::audio::{WAVETABLE, voices, MidiNote};
-
-// Build a square wave
-let mut square = [0u8; 256];
-for i in 0..128 { square[i] = 0xFF; } // top half
-for i in 128..256 { square[i] = 0x00; } // bottom half
-
-// Write it into slot 1 (WAVETABLE[1] = 0x0400 for 8ch)
-let slot = WAVETABLE[1] as usize;
-console.audio.aram[slot..slot + 256].copy_from_slice(&square);
-
-// Point a voice at the new slot
-let v = voices();
-v[0].set_note(MidiNote::C4);
-v[0].set_volume(63);
-v[0].set_wavetable(WAVETABLE[1]);
-```
-
-**Do this after `load_firmware` and before the voices start playing.** Writing
-to a slot while a voice is actively reading it will produce a brief glitch as
-the ACP picks up the mid-write state.
-
-#### Common waveform shapes
-
-All of these are drop-in replacements for the body of the example above.
-
-```rust
-// Sine wave (the firmware default, reproduced here for reference)
-let mut sine = [0u8; 256];
-for i in 0..256usize {
-    let radians = core::f32::consts::TAU * i as f32 / 256.0;
-    sine[i] = (libm::sinf(radians) * 127.0 + 128.0) as u8;
-}
-
-// Sawtooth: ramp from 0x00 to 0xFF
-let mut saw = [0u8; 256];
-for i in 0..256usize { saw[i] = i as u8; }
-
-// Triangle: ramp up then down
-let mut tri = [0u8; 256];
-for i in 0..128usize { tri[i] = (i * 2) as u8; }
-for i in 128..256usize { tri[i] = (255 - (i - 128) * 2) as u8; }
-
-// Square (50% duty cycle)
-let mut sq = [0u8; 256];
-for i in 0..128 { sq[i] = 0xFF; }
-for i in 128..256 { sq[i] = 0x00; }
-
-// Pulse (25% duty cycle - brighter, thinner)
-let mut pulse = [0u8; 256];
-for i in 0..64 { pulse[i] = 0xFF; }
-for i in 64..256 { pulse[i] = 0x00; }
-```
-
-**no_std note:** `f32::sin` is not available directly (no standard library).
-Given the CPU constraints it is better to pre-compute wavetable data on the
-host and embed it as a `const [u8; 256]`. But if necessary, there are
-`no_std`-compatible math crates such as `libm` and `micromath`. The simplest
-approach is to unroll the loops and just write them out as byte literals.
-
-#### Multi-timbral setup
-
-Each voice independently points at any slot, so you can run different timbres
-simultaneously across the available voices:
-
-```rust
-let v = voices();
-v[0].set_wavetable(WAVETABLE[1]); // instrument 1
-v[1].set_wavetable(WAVETABLE[1]);
-v[2].set_wavetable(WAVETABLE[2]); // instrument 2
-v[3].set_wavetable(WAVETABLE[2]);
-v[4].set_wavetable(WAVETABLE[2]);
-v[5].set_wavetable(WAVETABLE[3]); // etc.
-```
-
-#### 7ch-linear differences
-
-The `audio-wavetable-7ch-linear` firmware reserves addresses `$0200`–`$05FF`
-for four internal volume scaling tables. Do not overwrite this range.
-Doing so will break volume control on all voices. Custom waveforms must be
-placed in slots 1-5 (addresses `$0700`-`$0B00`); slot 0 at `$0600` holds
-the pre-loaded sine and can also be overwritten once firmware is loaded.
-
-#### Changing the default (pre-loaded) waveform
-
-Slot 0 is populated from `gametank/audiofw-src/<firmware>/wave.asm` at link
-time. To change what ships with the firmware binary, edit that file - it's a
-256-byte `.byte` table in the `.const.wavetables` section. After editing,
-`cargo +mos build` will automatically reassemble the firmware and the new
-waveform will be present from the moment `load_firmware` is called, without
-any runtime `copy_from_slice` needed.
-
-### Modifying / adding FM instruments
-
-Predefined instruments live in `gametank/src/audio/fm_4ch/instruments.rs` as constants,
-ported verbatim from the C SDK. Each is a 4-operator patch:
-
-```rust
-pub struct Instrument {
-    pub env_initial:  [u8; 4], // peak amplitude at note-on, per operator
-    pub env_decay:    [u8; 4], // per-frame decay rate, per operator
-    pub env_sustain:  [u8; 4], // amplitude floor after decay, per operator
-    pub op_transpose: [u8; 4], // semitone offset per operator (FM ratio/detune)
-    pub feedback:     u8,      // operator-0 self-feedback amount
-    pub transpose:    i8,      // whole-channel semitone shift
-}
-```
-
-**To add a new instrument**, define a new `pub const Instrument { .. }` with
-your own envelope/transpose/feedback values and load it onto a channel with
-`Channel::load_instrument(&YOUR_INSTRUMENT)`. No firmware rebuild is needed
-since these values are just data pushed into the ACP's zero page at runtime.
-`op_transpose` values set the harmonic ratio between operators (e.g. `[0, 0, 0, 0]`
-for unison, `[12, 36, 0, 24]` for a spread of octave/detuned ratios).
-`env_decay` values use a sign-aware trick (`(sustain - amplitude) ^ decay`) so
-a "negative" high-bit-set decay byte can ramp up toward sustain instead of down.
-
-**To change the synthesis algorithm itself** (operator routing, channel
-count, sine table, feedback topology, etc.) you need to edit the actual ACP
-program at `gametank/audiofw-src/fm-4ch/audio_fw.asm` and rebuild. `cargo
-build` with `audio-fm-4ch` enabled automatically reassembles it. Note the
-firmware's 4x4 channel/operator count and zero-page memory map are fixed
-by the `doChannel` macro being invoked exactly 4 times in the IRQ handler and
-by `gametank-acp.cfg`'s layout. Changing those counts means updating both the
-assembly and the corresponding Rust-side offsets/array sizes in
-`fm_4ch/mod.rs` to match.
-
-If you're new to FM synthesis then much of this terminology can be confusing.
-A tutorial is outside the scope of this example, but a few online resources to
-get you started:
-
-- Sega's YM2612 specification - https://www.smspower.org/maxim/Documents/YM2612#page5
-- Andrew Huang's FM SYNTHS in under 4 minutes - https://youtu.be/vvBl3YUBUyY

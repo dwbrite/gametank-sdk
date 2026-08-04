@@ -1,6 +1,10 @@
 .global audio_irq
 .extern vol_table
-.extern sine_table
+.extern instrument1_table
+.extern instrument2_table
+.extern instrument3_table
+.extern instrument4_table
+.extern instrument5_table
 .section .text
 
 ; Memory map (4KB = $0000 - $0FFF) as a Markdown table:
@@ -172,7 +176,7 @@ _start:
     txs
     
     ; Voice data is already initialized by .data.voices section
-    ; (all phases, freqs, volumes = 0, waveptrs = sine_table)
+    ; (all phases, freqs, volumes = 0, waveptrs = instrument1_table)
     
     ; Enable interrupts
     cli
@@ -184,11 +188,11 @@ main_loop:
 ; Initialize voice data with default wavetable pointers
 .section .data.voices
 .rept 7
-    .byte 0, 0             ; phase_l, phase_h
-    .byte 0, 0             ; freq_l, freq_h
-    .word sine_table       ; waveptr (little-endian)
-    .word vol_table_3      ; volptr (little-endian, points to 62.5% table)
-    .byte 4                ; shift (4 = silence)
+    .byte 0, 0              ; phase_l, phase_h
+    .byte 0, 0              ; freq_l, freq_h
+    .word instrument1_table ; waveptr (little-endian)
+    .word vol_table_3       ; volptr (little-endian, points to 62.5% table)
+    .byte 4                 ; shift (4 = silence)
 .endr
 
 ; Vector table (must be at $FFFA-$FFFF)

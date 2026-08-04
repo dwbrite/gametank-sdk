@@ -1,4 +1,4 @@
-use std::{env, fs::File, io::Write, path::Path};
+use std::{env, fs, fs::File, io::Write, path::Path, process::Command};
 
 fn main() {
     // Only run for the correct target
@@ -9,22 +9,6 @@ fn main() {
         );
         return;
     }
-
-    // println!("cargo:rerun-if-changed=../audio/src/");
-    // println!("cargo:rerun-if-changed=target/audiofw.bin");
-    // println!("cargo:rerun-if-changed=../audio/Cargo.toml");
-
-    // assert!(Command::new("cargo")
-    //     .args(["+mos","build","--release","-Z","build-std=core","--target","mos-unknown-none"])
-    //     .current_dir("../audio")
-    //     .status().unwrap().success());
-    // println!("cargo:warning=audiofw successfully built");
-    // assert!(Command::new("llvm-objcopy")
-    //     .args(["-O","binary",
-    //            "../audio/target/mos-unknown-none/release/audiofw",
-    //            "target/audiofw.bin"])
-    //     .status().unwrap().success());
-    // println!("cargo:warning=Generated target/audiofw.bin");
 
     let out_dir = env::var("OUT_DIR").unwrap();
     let link_path = Path::new(&out_dir).join("linker.ld");
@@ -100,8 +84,55 @@ fn main() {
     // Hook up the linker script
     println!("cargo:rustc-link-arg=-T{}", link_path.display());
 
-    // Preserve static asm lib - use absolute path for container compatibility
+    // Assemble src/asm/*.asm into target/asm/libasm.a
     let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    assemble_asm_lib(&manifest_dir, &out_dir);
     println!("cargo:rustc-link-search=native={}/target/asm", manifest_dir);
     println!("cargo:rustc-link-lib=static=asm");
+}
+
+/// Assemble every `src/asm/*.asm` file with `mos-clang` and archive them into
+/// `target/asm/libasm.a` using `llvm-ar`, so the linker can find `-lasm`.
+fn assemble_asm_lib(manifest_dir: &str, out_dir: &str) {
+    let asm_src_dir = Path::new(manifest_dir).join("src/asm");
+    let asm_out_dir = Path::new(manifest_dir).join("target/asm");
+    fs::create_dir_all(&asm_out_dir).expect("failed to create target/asm");
+
+    let mut obj_paths: Vec<std::path::PathBuf> = Vec::new();
+
+    for entry in fs::read_dir(&asm_src_dir).expect("failed to read src/asm") {
+        let entry = entry.expect("failed to read dir entry");
+        let src = entry.path();
+        if src.extension().and_then(|e| e.to_str()) != Some("asm") {
+            continue;
+        }
+        println!("cargo:rerun-if-changed={}", src.display());
+
+        let stem = src.file_stem().unwrap().to_str().unwrap();
+        let obj = Path::new(out_dir).join(format!("asm-{stem}.o"));
+
+        let status = Command::new("mos-clang")
+            .args(["-c", "--target=mos-unknown-none", "-mcpu=mosw65c02"])
+            .arg(&src)
+            .arg("-o")
+            .arg(&obj)
+            .status()
+            .expect("mos-clang not found; ensure the LLVM MOS SDK is on PATH");
+        assert!(
+            status.success(),
+            "mos-clang failed assembling {}",
+            src.display()
+        );
+
+        obj_paths.push(obj);
+    }
+
+    let lib = asm_out_dir.join("libasm.a");
+    let status = Command::new("llvm-ar")
+        .arg("crs")
+        .arg(&lib)
+        .args(&obj_paths)
+        .status()
+        .expect("llvm-ar not found; ensure the LLVM MOS SDK is on PATH");
+    assert!(status.success(), "llvm-ar failed creating libasm.a");
 }

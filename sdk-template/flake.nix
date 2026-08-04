@@ -165,6 +165,7 @@
           LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath (
             with pkgs;
             [
+              alsa-lib
               libx11
               libxi
               libxcursor

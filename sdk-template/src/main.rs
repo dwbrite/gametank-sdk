@@ -63,7 +63,6 @@ fn main(console: &mut Console) {
         // - and audio sequencing!
         sequencer.tick();
 
-
         // then we wait for the blit to finish before drawing each ball
         blitter.wait_blit();
         for ball in balls.iter().rev() {

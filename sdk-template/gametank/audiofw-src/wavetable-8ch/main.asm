@@ -1,13 +1,23 @@
 .global audio_irq
 .extern vol_table
-.extern sine_table
+.extern instrument1_table
+.extern instrument2_table
+.extern instrument3_table
+.extern instrument4_table
+.extern instrument5_table
+.extern instrument6_table
+.extern instrument7_table
+.extern instrument8_table
+.extern instrument9_table
+.extern instrument10_table
+.extern instrument11_table
 .section .text
 
 ; Memory map (4KB = $0000 - $0FFF) as a Markdown table:
 ; | Range        | Size         | Purpose                        | Notes                                      |
 ; |--------------|--------------|--------------------------------|--------------------------------------------|
 ; | $0000-$0040  | $0100 (256)  | Zero Page (Reserved)           | Fast addressing; pointers & small vars     |
-; | $0041-$0078  | $0038 (56)   | Voices (8 × 7 bytes)           | VOICE_BASE = $0042, VOICE_SIZE = 7        |
+; | $0041-$0078  | $0038 (56)   | Voices (8 × 7 bytes)           | VOICE_BASE = $0041, VOICE_SIZE = 7        |
 ; | $0100-$01FF  | $0100 (256)  | CPU Stack                      | CPU stack                                  |
 ; | $0200-$03FF  | $0200 (512)  | Hardcoded wavetables (2 × 256) | WAVETABLE_BASE = $0200, WAVETABLE_SIZE = 256 |
 ; | $0400-$0BFF  | $0A00 (2560) | Wavetables (10 × 256)          | WAVETABLE_BASE = $0400, WAVETABLE_SIZE = 256 |
@@ -80,9 +90,9 @@ DEFINE_WAVETABLE 7
     adc VOICE_\n\()_FREQ_H
     sta VOICE_\n\()_PHASE_H
 
-    ; Get wavetable sample using phase_high as index
-    tax                    ; X = phase high byte
-    lda sine_table, x      ; lookup sample (TODO: use per-voice wavetable pointer)
+    ; Get wavetable sample using phase_high as index into per-voice wavetable
+    tay                    ; Y = phase high byte (table index)
+    lda (VOICE_\n\()_WAVEPTR_L), y ; indirect indexed read from voice's wavetable
 
     ; Scale to 7-bit for volume scaling
     lsr a                  ; divide by 2
@@ -137,14 +147,14 @@ audio_irq:
     rti                    ; return from interrupt
 
 
-; Macro to initialize a voice (phase=0, freq=0, waveptr=sine_table, volume=0)
+; Macro to initialize a voice (phase=0, freq=0, waveptr=instrument1, volume=0)
 .macro INIT_VOICE n
     lda #0
     sta VOICE_\n\()_VOLUME
-    ; Set wavetable pointer to sine_table
-    lda #<sine_table
+    ; Set wavetable pointer to instrument1 (Rust Sequencer::init_voices overrides per-channel)
+    lda #<instrument1
     sta VOICE_\n\()_WAVEPTR_L
-    lda #>sine_table
+    lda #>instrument1
     sta VOICE_\n\()_WAVEPTR_H
 .endm
 
