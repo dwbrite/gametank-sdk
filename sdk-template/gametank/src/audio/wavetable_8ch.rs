@@ -42,7 +42,7 @@
 //! console.audio[0x400..0x500].copy_from_slice(&my_wave);
 //! ```
 
-use crate::audio::pitch_table::{midi_inc, MidiNote};
+use crate::audio::pitch_table::{MidiNote, midi_inc};
 
 /// Base address for voice registers (CPU-side address, ACP RAM at 0x3000)
 pub const VOICE_BASE: usize = 0x3041;
@@ -60,9 +60,7 @@ pub const WAVETABLE_COUNT: usize = 11;
 
 /// Wavetable slot addresses (CPU-side)
 pub const WAVETABLE: [u16; WAVETABLE_COUNT] = [
-    0x0300, 0x0400, 0x0500, 0x0600, 0x0700,
-    0x0800, 0x0900, 0x0A00, 0x0B00, 0x0C00,
-    0x0D00,
+    0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0A00, 0x0B00, 0x0C00, 0x0D00,
 ];
 
 /// A single synthesizer voice.
@@ -89,7 +87,7 @@ impl Voice {
     }
 
     /// Set the voice frequency directly as a 16-bit increment value.
-    /// 
+    ///
     /// Use `pitch_table::midi_inc()` to convert from MIDI notes,
     /// or calculate directly: `inc = (freq_hz * 65536) / SAMPLE_RATE`
     #[inline]
@@ -98,7 +96,7 @@ impl Voice {
     }
 
     /// Set the volume level (0 = silence, 63 = maximum).
-    /// 
+    ///
     /// Values above 63 may cause clipping/distortion.
     #[inline]
     pub fn set_volume(&mut self, volume: u8) {
@@ -106,7 +104,7 @@ impl Voice {
     }
 
     /// Set which wavetable this voice uses.
-    /// 
+    ///
     /// Pass the ACP-side address (e.g., `WAVETABLE[0]` = 0x0400).
     #[inline]
     pub fn set_wavetable(&mut self, wavetable_addr: u16) {

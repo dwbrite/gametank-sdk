@@ -60,6 +60,11 @@ pub mod wavetable_8ch;
 #[cfg(feature = "audio-wavetable-8ch")]
 pub use wavetable_8ch::*;
 
+#[cfg(feature = "audio-wavetable-8ch")]
+pub mod track_sequencer;
+#[cfg(feature = "audio-wavetable-8ch")]
+pub use track_sequencer::TrackSequencer;
+
 #[cfg(feature = "audio-wavetable-7ch-linear")]
 pub mod wavetable_7ch_linear;
 #[cfg(feature = "audio-wavetable-7ch-linear")]

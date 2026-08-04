@@ -2,8 +2,8 @@ use std::{env, path::Path, process::Command};
 
 fn main() {
     let manifest = env::var("CARGO_MANIFEST_DIR").unwrap();
-    let out_dir  = env::var("OUT_DIR").unwrap();
-    let fw_dir   = Path::new(&manifest).join("audiofw");
+    let out_dir = env::var("OUT_DIR").unwrap();
+    let fw_dir = Path::new(&manifest).join("audiofw");
 
     if env::var("CARGO_FEATURE_AUDIO_WAVETABLE_8CH").is_ok() {
         assemble_wavetable_firmware(
@@ -50,9 +50,9 @@ fn assemble_wavetable_firmware(
     fw_dir: &Path,
 ) {
     let src_dir = Path::new(manifest).join("audiofw-src").join(name);
-    let linker  = src_dir.join("linker.ld");
-    let elf     = Path::new(out_dir).join(format!("{name}.elf"));
-    let bin     = fw_dir.join(format!("{name}.bin"));
+    let linker = src_dir.join("linker.ld");
+    let elf = Path::new(out_dir).join(format!("{name}.elf"));
+    let bin = fw_dir.join(format!("{name}.bin"));
 
     println!("cargo:rerun-if-changed={}", linker.display());
 
@@ -68,6 +68,7 @@ fn assemble_wavetable_firmware(
             .arg(&src)
             .arg("-o")
             .arg(&obj)
+            .current_dir(&src_dir)
             .status();
 
         match result {
@@ -99,7 +100,8 @@ fn assemble_wavetable_firmware(
     }
     link_cmd.arg("-o").arg(&elf);
 
-    let status = link_cmd.status()
+    let status = link_cmd
+        .status()
         .expect("mos-clang not found. ensure the LLVM MOS SDK is on PATH");
     assert!(status.success(), "mos-clang failed linking {name} firmware");
 
@@ -110,7 +112,10 @@ fn assemble_wavetable_firmware(
         .arg(&bin)
         .status()
         .expect("llvm-objcopy not found. ensure the LLVM MOS SDK is on PATH");
-    assert!(status.success(), "llvm-objcopy failed extracting {name} firmware binary");
+    assert!(
+        status.success(),
+        "llvm-objcopy failed extracting {name} firmware binary"
+    );
 }
 
 /// Assemble the FM firmware using the cc65 toolchain (ca65 + ld65).
@@ -123,13 +128,16 @@ fn assemble_wavetable_firmware(
 fn assemble_fm_firmware(manifest: &str, out_dir: &str, fw_dir: &Path) {
     let src_dir = Path::new(manifest).join("audiofw-src/fm-4ch");
     let asm_src = src_dir.join("audio_fw.asm");
-    let cfg     = src_dir.join("gametank-acp.cfg");
-    let obj     = Path::new(out_dir).join("fm-4ch.o");
-    let bin     = fw_dir.join("fm-4ch.bin");
+    let cfg = src_dir.join("gametank-acp.cfg");
+    let obj = Path::new(out_dir).join("fm-4ch.o");
+    let bin = fw_dir.join("fm-4ch.bin");
 
     println!("cargo:rerun-if-changed={}", asm_src.display());
     println!("cargo:rerun-if-changed={}", cfg.display());
-    println!("cargo:rerun-if-changed={}", src_dir.join("sine_256_-63_63.bin").display());
+    println!(
+        "cargo:rerun-if-changed={}",
+        src_dir.join("sine_256_-63_63.bin").display()
+    );
 
     let result = Command::new("ca65")
         .args(["--cpu", "65c02", "--bin-include-dir"])
