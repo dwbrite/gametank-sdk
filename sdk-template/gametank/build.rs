@@ -15,22 +15,12 @@ fn main() {
         );
     }
 
-    if env::var("CARGO_FEATURE_AUDIO_WAVETABLE_7CH_LINEAR").is_ok() {
-        assemble_wavetable_firmware(
-            "wavetable-7ch-linear",
-            &["main", "wave", "vol"],
-            &manifest,
-            &out_dir,
-            &fw_dir,
-        );
-    }
-
     if env::var("CARGO_FEATURE_AUDIO_FM_4CH").is_ok() {
         assemble_fm_firmware(&manifest, &out_dir, &fw_dir);
     }
 }
 
-/// Assemble a wavetable firmware using the LLVM MOS toolchain.
+/// Assemble wavetable firmware using the LLVM MOS toolchain.
 ///
 /// Compiles each ASM file in `audiofw-src/*/` to an object file in
 /// `OUT_DIR`, links them with the firmware's linker.ld, and extracts a raw

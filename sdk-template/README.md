@@ -51,13 +51,12 @@ cargo +mos build --release
 
 ### Choosing a firmware
 
-Exactly one audio firmware is selected at build time via Cargo
+One of the two audio firmwares is selected at build time via Cargo
 features on the `rom` crate:
 
 | cargo feature                   | firmware                  | description                 |
 | ------------------------------- | ------------------------- | --------------------------- |
 | `audio-fm-4ch`                  | 4-channel FM synth        | ADSR envelopes per operator |
-| `audio-wavetable-7ch-linear`    | 7-channel wavetable synth | linear volume 0-16          |
 | `audio-wavetable-8ch` (default) | 8-channel wavetable synth | volume 0-63                 |
 
 Build with a specific backend using `--no-default-features --features <name>`:
@@ -65,9 +64,6 @@ Build with a specific backend using `--no-default-features --features <name>`:
 ```sh
 # FM synthesis
 cargo +mos build --release --no-default-features --features audio-fm-4ch
-
-# 7-channel wavetable synth (linear volume)
-cargo +mos build --release --no-default-features --features audio-wavetable-7ch-linear
 
 # Default 8-channel wavetable synth
 cargo +mos build --release
@@ -124,18 +120,10 @@ If you export multiple tracks into one project, ensure `wave.asm` and `instrumen
 
 ### Wavetables
 
-| firmware                     | slots | slot addresses (`WAVETABLE[n]`) |
-| ---------------------------- | ----- | ------------------------------- |
-| `audio-wavetable-8ch`        | 11    | `0x0300`, `0x0400` … `0x0D00`   |
-| `audio-wavetable-7ch-linear` | 6     | `0x0600`, `0x0700` … `0x0B00`   |
+The `wavetable-8ch` firmware has 11 instrument slots.
 
-The `WAVETABLE` constant array exported from `gametank::audio` holds the
-ACP-side address for each slot. Pass one of these to `voice.set_wavetable()`.
-
-The `audio-wavetable-7ch-linear` firmware reserves address range `$0200`-`$05FF`
-for four internal volume scaling tables. Custom waveforms must be placed in slots
-1-5 (addresses `$0700`-`$0B00`); slot 0 at `$0600` holds the pre-loaded sine and
-can also be overwritten once firmware is loaded.
+`gametank::audio::WAVETABLE` array holds the ACP-side address for each slot (`0x0300`, `0x400`... `0x0D00`).
+Pass one of these to `voice.set_wavetable()`.
 
 
 ### FM synthesis
@@ -208,15 +196,14 @@ without racing the ACP's per-sample read of those same locations.
   which the container and nix devShell provide. The linker config
   (`gametank-acp.cfg`) lays out zero page ($0-$FF), stack, and code
   to produce an exact 4096-byte image matching the ACP's address space.
-- **Wavetable firmwares** (`gametank/audiofw-src/wavetable-8ch/`,
-  `wavetable-7ch-linear/`) are llvm-mos-style assembly. `gametank/build.rs`
-  automatically assembles and links them into `gametank/audiofw/wavetable-*.bin`
-  whenever the corresponding feature is enabled. This requires `mos-clang`
-  and `llvm-objcopy`, which the container and nix devShell provide.
-  If those tools are not available the pre-built binary in `audiofw/`
-  is used as a fallback.
+- **Wavetable firmwares* (`gametank/audiofw-src/wavetable-8ch/`) is a llvm-mos-style
+  assembly. `gametank/build.rs` automatically assembles and links them into
+  `gametank/audiofw/wavetable-8ch.bin` whenever the corresponding feature
+  is enabled. This requires `mos-clang` and `llvm-objcopy`, which the
+  container and nix devShell provide. If those tools are not available
+  the pre-built binary in `audiofw/` is used as a fallback.
 
-All three binaries are embedded into the ROM in `gametank/src/audio/mod.rs`.
+Both binaries are embedded into the ROM in `gametank/src/audio/mod.rs`.
 Depending on which `audio-*` feature flag is active, that one will be exposed
 as `gametank::audio::FIRMWARE`.
 

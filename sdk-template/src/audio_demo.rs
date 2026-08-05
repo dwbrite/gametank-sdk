@@ -1,27 +1,21 @@
 //! Audio demo module - example chord progressions and sequencing.
 //!
-//! Supports all three firmwares via Cargo features:
-//! - `audio-wavetable-8ch` - 8 voices, volume 0-63
-//! - `audio-wavetable-7ch-linear` - 7 voices, volume 0-16
+//! Works with wavetable and FM synthesis cargo features:
+//! - `audio-wavetable-8ch` - 8 voices, 11 PCM instruments
 //! - `audio-fm-4ch` - 4 FM channels, 4 operators each, full ADSR per operator
 
 #[cfg(feature = "audio-wavetable-8ch")]
 const MAX_VOLUME: u8 = 63;
-#[cfg(feature = "audio-wavetable-7ch-linear")]
-const MAX_VOLUME: u8 = 16;
 
-/// Sequencer state for the FM demo (4-channel FM firmware).
-///
-/// Mirrors the C SDK demo flow: builds up a Cmaj7 chord across channels,
-/// plays an arpeggio melody, then lets the ADSR envelopes decay to silence.
+/// Sequencer state for the FM demo
 #[cfg(feature = "audio-fm-4ch")]
 pub struct DemoSequencer {
     frame: u16,
     step:  u8,
 }
 
-/// Sequencer state for the wavetable demo (8ch or 7ch-linear firmware).
-#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
+/// Sequencer state for the wavetable demo
+#[cfg(feature = "audio-wavetable-8ch")]
 pub struct DemoSequencer {
     frame:               u16,
     step:                u8,
@@ -79,7 +73,7 @@ impl DemoSequencer {
     }
 }
 
-#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
+#[cfg(feature = "audio-wavetable-8ch")]
 impl DemoSequencer {
     pub const fn new() -> Self {
         Self {
@@ -170,7 +164,7 @@ pub fn init_demo() -> DemoSequencer {
     DemoSequencer::new()
 }
 
-#[cfg(any(feature = "audio-wavetable-8ch", feature = "audio-wavetable-7ch-linear"))]
+#[cfg(feature = "audio-wavetable-8ch")]
 pub fn init_demo() -> DemoSequencer {
     use gametank::audio::{voices, WAVETABLE};
 

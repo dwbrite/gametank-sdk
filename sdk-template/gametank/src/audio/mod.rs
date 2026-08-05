@@ -35,21 +35,10 @@
 //! // call ch[0].tick() once per frame to advance the ADSR envelope
 //! ```
 //!
-//! ## Audio Firmware
-//!
-//! Enable exactly one firmware via Cargo features:
-//! - `audio-wavetable-8ch` — 8-channel wavetable synth
-//! - `audio-wavetable-7ch-linear` — 7-channel wavetable synth, linear 16-level volume
-//! - `audio-fm-4ch` — 4-channel FM synth (4 operators/channel), mirrors the C SDK
-//!
-//! The firmware runs on the Audio Coprocessor at ~14 kHz sample rate.
 
 // Audio firmware binary - selected via Cargo.toml features
 #[cfg(feature = "audio-wavetable-8ch")]
 pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-8ch.bin");
-
-#[cfg(feature = "audio-wavetable-7ch-linear")]
-pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/wavetable-7ch-linear.bin");
 
 #[cfg(feature = "audio-fm-4ch")]
 pub static FIRMWARE: &[u8; 4096] = include_bytes!("../../audiofw/fm-4ch.bin");
@@ -64,11 +53,6 @@ pub use wavetable_8ch::*;
 pub mod track_sequencer;
 #[cfg(feature = "audio-wavetable-8ch")]
 pub use track_sequencer::TrackSequencer;
-
-#[cfg(feature = "audio-wavetable-7ch-linear")]
-pub mod wavetable_7ch_linear;
-#[cfg(feature = "audio-wavetable-7ch-linear")]
-pub use wavetable_7ch_linear::*;
 
 #[cfg(feature = "audio-fm-4ch")]
 pub mod fm_4ch;
