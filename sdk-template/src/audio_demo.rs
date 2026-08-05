@@ -84,7 +84,7 @@ impl DemoSequencer {
     pub const fn new() -> Self {
         Self {
             frame: 0, step: 0,
-            bg_level: MAX_VOLUME, melody_level: MAX_VOLUME,
+            bg_level: MAX_VOLUME - 30, melody_level: MAX_VOLUME - 10,
             bg_fade_counter: 0, melody_fade_counter: 0,
         }
     }
