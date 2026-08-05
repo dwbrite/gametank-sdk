@@ -8,7 +8,6 @@ edition = "2024"
 [features]
 default = ["audio-wavetable-8ch"]
 audio-fm-4ch = ["gametank/audio-fm-4ch"]
-audio-wavetable-7ch-linear = ["gametank/audio-wavetable-7ch-linear"]
 audio-wavetable-8ch = ["gametank/audio-wavetable-8ch"]
 
 [profile.release]

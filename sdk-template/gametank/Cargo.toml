@@ -11,7 +11,6 @@ categories = ["embedded", "no-std", "game-development"]
 
 [features]
 audio-wavetable-8ch = []
-audio-wavetable-7ch-linear = []
 audio-fm-4ch = []
 
 [dependencies]
