@@ -103,9 +103,9 @@ pub fn build_asm_in_container(workdir: &Path, working_dir: &Path) -> Result<(), 
                     "--filetype=obj",
                     "-triple=mos",
                     "-mcpu=mosw65c02",
-                    &format!("{}/src/asm/{}.asm", workspace_dir, filename),
+                    &format!("{}src/asm/{}.asm", workspace_dir, filename),
                     "-o",
-                    &format!("{}/target/asm/{}.o", workspace_dir, filename),
+                    &format!("{}target/asm/{}.o", workspace_dir, filename),
                 ])?;
             }
         }

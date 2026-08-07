@@ -24,7 +24,6 @@ pub fn parse_crate_name(content: &str) -> Result<String, String> {
         .ok_or_else(|| "Could not find crate name in Cargo.toml".to_string())
 }
 
-/// Find the ROM directory (either rom/ subdirectory or current dir with Cargo.toml)
 /// Walks up the directory tree to find the project root
 pub fn find_rom_dir() -> Result<(PathBuf, PathBuf), String> {
     let mut current_dir = std::env::current_dir()
@@ -32,14 +31,6 @@ pub fn find_rom_dir() -> Result<(PathBuf, PathBuf), String> {
     
     // Walk up the directory tree to find a rom/ dir or Cargo.toml
     loop {
-        // Check if this directory has a rom/ subdirectory with a GameTank project
-        if current_dir.join("rom").exists() {
-            let rom_dir = current_dir.join("rom");
-            if is_gametank_project(&rom_dir) {
-                return Ok((current_dir, rom_dir));
-            }
-        }
-        
         // Check if this directory itself is a GameTank ROM project
         if is_gametank_project(&current_dir) {
             return Ok((current_dir.clone(), current_dir));
@@ -50,46 +41,19 @@ pub fn find_rom_dir() -> Result<(PathBuf, PathBuf), String> {
             current_dir = parent.to_path_buf();
         } else {
             // Reached filesystem root without finding project
-            return Err("Could not find ROM project (no rom/ dir or GameTank project found)".to_string());
+            return Err("Could not find ROM project (no dir or GameTank project found)".to_string());
         }
     }
 }
 
-/// Check if a directory is a GameTank ROM project
-/// A GameTank project has Cargo.toml and either:
-/// - src/asm/ directory (unique to GameTank projects)
-/// - asset-macros/ directory 
-/// - sdk/ subdirectory (when sdk is a separate crate)
-/// - gametank-asset-macros or sdk dependency in Cargo.toml
+
 fn is_gametank_project(dir: &Path) -> bool {
-    if !dir.join("../../../Cargo.toml").exists() {
-        return false;
-    }
-    
-    // Check for unique GameTank markers
-    if dir.join("src/asm").exists() {
-        return true;
-    }
-    
-    if dir.join("asset-macros").exists() {
-        return true;
-    }
-    
-    // Check for sdk/ subdirectory (when sdk is a separate crate)
-    if dir.join("sdk").exists() && dir.join("sdk/Cargo.toml").exists() {
-        return true;
-    }
-    
-    // Check Cargo.toml for gametank dependencies
-    if let Ok(cargo_content) = std::fs::read_to_string(dir.join("../../../Cargo.toml")) {
-        if cargo_content.contains("gametank-asset-macros") 
-            || cargo_content.contains("gametank-sdk")
-            || (cargo_content.contains("sdk") && cargo_content.contains("path = \"sdk\"")) {
-            return true;
-        }
-    }
-    
-    false
+    let Ok(src) = std::fs::read_to_string(dir.join("Cargo.toml")) else { return false };
+    let Ok(table) = src.parse::<toml::Table>() else { return false };
+    table.get("package")
+        .and_then(|p| p.get("metadata"))
+        .and_then(|m| m.get("gametank"))
+        .is_some()
 }
 
 /// Run cargo build for the ROM (runs directly)
