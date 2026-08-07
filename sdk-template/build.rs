@@ -98,6 +98,8 @@ fn assemble_asm_lib(manifest_dir: &str, out_dir: &str) {
     let asm_out_dir = Path::new(manifest_dir).join("target/asm");
     fs::create_dir_all(&asm_out_dir).expect("failed to create target/asm");
 
+    println!("cargo:rerun-if-changed={}", asm_src_dir.display());
+
     let mut obj_paths: Vec<std::path::PathBuf> = Vec::new();
 
     for entry in fs::read_dir(&asm_src_dir).expect("failed to read src/asm") {
