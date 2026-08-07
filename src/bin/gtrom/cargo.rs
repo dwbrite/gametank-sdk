@@ -9,7 +9,7 @@ use crate::container::podman_exec;
 
 /// Get crate name from Cargo.toml in the given directory
 pub fn get_crate_name(dir: &Path) -> Result<String, String> {
-    let cargo_toml_path = dir.join("Cargo.toml");
+    let cargo_toml_path = dir.join("../../../Cargo.toml");
     let cargo_content = std::fs::read_to_string(&cargo_toml_path)
         .map_err(|e| format!("Failed to read Cargo.toml: {}", e))?;
     parse_crate_name(&cargo_content)
@@ -62,7 +62,7 @@ pub fn find_rom_dir() -> Result<(PathBuf, PathBuf), String> {
 /// - sdk/ subdirectory (when sdk is a separate crate)
 /// - gametank-asset-macros or sdk dependency in Cargo.toml
 fn is_gametank_project(dir: &Path) -> bool {
-    if !dir.join("Cargo.toml").exists() {
+    if !dir.join("../../../Cargo.toml").exists() {
         return false;
     }
     
@@ -81,7 +81,7 @@ fn is_gametank_project(dir: &Path) -> bool {
     }
     
     // Check Cargo.toml for gametank dependencies
-    if let Ok(cargo_content) = std::fs::read_to_string(dir.join("Cargo.toml")) {
+    if let Ok(cargo_content) = std::fs::read_to_string(dir.join("../../../Cargo.toml")) {
         if cargo_content.contains("gametank-asset-macros") 
             || cargo_content.contains("gametank-sdk")
             || (cargo_content.contains("sdk") && cargo_content.contains("path = \"sdk\"")) {

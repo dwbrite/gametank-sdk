@@ -113,7 +113,7 @@ fn build_audio_rust(path: &Path, name: &str, output_dir: &Path) -> Result<(), St
     }
     
     // Find the ELF - use the crate name from Cargo.toml
-    let cargo_toml = std::fs::read_to_string(path.join("Cargo.toml"))
+    let cargo_toml = std::fs::read_to_string(path.join("../../../Cargo.toml"))
         .map_err(|e| format!("Failed to read Cargo.toml: {}", e))?;
     
     let crate_name = cargo_toml.lines()
@@ -241,7 +241,7 @@ pub fn do_audio_build(path_str: &str) -> Result<(), String> {
     
     if is_in_container() {
         // Direct build inside container
-        if path.join("Cargo.toml").exists() {
+        if path.join("../../../Cargo.toml").exists() {
             build_audio_rust(path, &name, &output_dir)
         } else {
             build_audio_asm(path, &name, &output_dir)
@@ -250,7 +250,7 @@ pub fn do_audio_build(path_str: &str) -> Result<(), String> {
         // Orchestrate from outside container - run llvm commands via podman exec
         let (workspace_root, _runtime) = ensure_container()?;
         
-        if path.join("Cargo.toml").exists() {
+        if path.join("../../../Cargo.toml").exists() {
             // TODO: Rust audio build via container
             Err("Rust audio firmware build from outside container not yet implemented".to_string())
         } else {

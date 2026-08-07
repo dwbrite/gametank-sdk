@@ -12,7 +12,7 @@ pub fn build_asm(workdir: &str) -> Result<(), String> {
     println!("Assembling .asm files...");
     
     let asm_dir = Path::new(workdir).join("src/asm");
-    let target_dir = Path::new(workdir).join("target/asm");
+    let target_dir = Path::new(workdir).join("../../../target/asm");
     
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| format!("Failed to create target/asm: {}", e))?;
@@ -81,7 +81,7 @@ pub fn build_asm_in_container(workdir: &Path, working_dir: &Path) -> Result<(), 
     println!("Assembling .asm files...");
     
     let asm_dir = workdir.join("src/asm");
-    let target_dir = workdir.join("target/asm");
+    let target_dir = workdir.join("../../../target/asm");
     
     std::fs::create_dir_all(&target_dir)
         .map_err(|e| format!("Failed to create target/asm: {}", e))?;

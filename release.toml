@@ -1,4 +1,13 @@
-# Workspace-level cargo-release config
-# Disable tagging for all packages by default - only gametank-sdk (tools) creates a tag
-tag = false
+# cargo-release configuration for gtrom
+# The pre-release-hook rebuilds the SDK tarball before publishing
+
+pre-release-hook = ["tar", "-czf", "src/bin/sdk-template.tar.gz", "-C", "sdk-template", "--exclude=*\\/target", "--exclude=*.gtr", "."]
+
+# Tag format for workspace member
+tag-prefix = "gametank-sdk-"
+tag-name = "{{prefix}}v{{version}}"
+
+# Let cargo-dist handle GitHub releases
+tag = true
+push = true
 publish = true

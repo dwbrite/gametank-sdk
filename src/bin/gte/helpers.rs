@@ -7,7 +7,7 @@ pub fn get_now_ms() -> f64 {
             .performance()
             .expect("performance should be available");
 
-        return performance.now();
+        performance.now()
     }
 
     #[cfg(not(target_arch = "wasm32"))]
@@ -18,6 +18,6 @@ pub fn get_now_ms() -> f64 {
         if START_INSTANT.is_none() {
             START_INSTANT = Some(Instant::now());
         }
-        return START_INSTANT.unwrap().elapsed().as_secs_f64() * 1000.0;
+        START_INSTANT.unwrap().elapsed().as_secs_f64() * 1000.0
     }
 }
