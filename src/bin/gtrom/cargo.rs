@@ -9,7 +9,7 @@ use crate::container::podman_exec;
 
 /// Get crate name from Cargo.toml in the given directory
 pub fn get_crate_name(dir: &Path) -> Result<String, String> {
-    let cargo_toml_path = dir.join("../../../Cargo.toml");
+    let cargo_toml_path = dir.join("Cargo.toml");
     let cargo_content = std::fs::read_to_string(&cargo_toml_path)
         .map_err(|e| format!("Failed to read Cargo.toml: {}", e))?;
     parse_crate_name(&cargo_content)

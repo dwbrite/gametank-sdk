@@ -159,7 +159,7 @@ fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>, cartridge: Opt
     // TODO: heuristics to determine cartridge type, but for now assume 2M if not provided
     let cartridge = cartridge.unwrap_or_else(|| { Cartridge::Cart2M});
 
-    port.write(b"mode f\r").expect("write failed");
+    port.write_all(b"mode f\r").expect("write failed");
     port.flush().ok();
     wait_for_str(port, "FLASH");
 
