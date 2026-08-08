@@ -221,8 +221,8 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
                 self.acp.set_irq(true);
 
                 let sample_rate = self.cpu_frequency_hz / self.cpu_bus.system_control.sample_rate() as f64;
-                // if audio_out is none or mismatched sample rate
-                if self.audio_out.as_ref().map_or(true, |gta| gta.sample_rate != sample_rate) {
+                // if audio_out is none or has mismatched sample rate
+                if self.audio_out.as_ref().is_none_or(|gta| gta.sample_rate != sample_rate) {
                     warn!("recreated audio stream with new sample rate: {:.3}Hz ({})", sample_rate, self.cpu_bus.system_control.sample_rate());
                     self.audio_out = Some(GameTankAudio::new(sample_rate, self.target_sample_rate));
                 }

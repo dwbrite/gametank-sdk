@@ -7,7 +7,7 @@ rustflags = [
     "-C", "link-arg=-nostdlib",
     "-C", "panic=abort",
     "-C","link-arg=-Wl,-Map=target/link.map",
-    "-C", "target-cpu=mosw65c02"
+    "-C", "target-cpu=mosw65c02",
 ]
 
 [unstable]

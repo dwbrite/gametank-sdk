@@ -6,6 +6,8 @@
 use gametank::{
     audio::FIRMWARE, boot::wait, console::Console, via::Via, video_dma::blitter::BlitterGuard,
 };
+use gametank::scr::VideoFlags;
+use gametank::boot::wait_vblank;
 
 use crate::ball::init_balls;
 
@@ -41,12 +43,8 @@ fn main(console: &mut Console) {
 
     let mut sequencer = audio_demo::init_demo();
     let mut balls = init_balls();
-
     loop {
-        unsafe {
-            wait();
-        }
-
+        wait_vblank();
         console.flip_framebuffers();
 
         // only unwrap when you know you have exclusive access to the blitter, dma, etc
@@ -63,7 +61,7 @@ fn main(console: &mut Console) {
         // - and audio sequencing!
         sequencer.tick();
 
-        // then we wait for the blit to finish before drawing each ball
+        // then we wait for the blit to finish before drawing the balls
         blitter.wait_blit();
         for ball in balls.iter().rev() {
             ball.draw(&mut blitter);
@@ -71,6 +69,5 @@ fn main(console: &mut Console) {
 
         // Apply letterbox to mask overscan areas before vsync
         blitter.draw_letterbox();
-        blitter.wait_blit();
     }
 }

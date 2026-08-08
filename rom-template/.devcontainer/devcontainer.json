@@ -1,0 +1,11 @@
+{
+  "name": "gametank-rom",
+  "image": "docker.io/dwbrite/rust-mos:gte",
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,z",
+  "customizations": {
+    "vscode": {
+      "extensions": ["rust-lang.rust-analyzer"]
+    }
+  }
+}

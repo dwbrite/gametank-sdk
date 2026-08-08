@@ -6,11 +6,10 @@ members = [
     "emulator/core/gte-acp",
     "emulator/core/gte-w65c02s",
     "emulator/libretro",
-    "rom-template/gametank",
 ]
 
 exclude = [
-    "rom-template/asset-macros",
+    "rom-template",
     "examples",
     "examples/*",
     "examples/*/*",

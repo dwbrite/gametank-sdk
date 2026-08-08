@@ -3,5 +3,6 @@
         "Cargo.toml",
         "asset-macros/Cargo.toml",
         "gametank/Cargo.toml",
-    ]
+    ],
+    "dev.containers.dockerPath": "podman"
 }

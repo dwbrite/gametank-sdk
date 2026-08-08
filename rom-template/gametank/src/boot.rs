@@ -2,6 +2,7 @@
 use core::panic::PanicInfo;
 use core::ptr;
 
+use crate::blitter::Bcr;
 use crate::{blitter::SpriteQuadrant, console::Console};
 
 unsafe extern "Rust" {
@@ -16,6 +17,23 @@ fn panic(_panic: &PanicInfo<'_>) -> ! {
 
 #[unsafe(link_section = ".data.zp")]
 pub static mut VBLANK: bool = false;
+
+
+#[inline(always)]
+pub fn wait_vblank() {
+    unsafe {
+        VBLANK = false;
+        while !core::ptr::read_volatile(&raw const VBLANK) {
+            wait();
+        }
+    }
+}
+
+
+/// this is a lie
+#[unsafe(link_section = ".data.zp")]
+pub static mut BLIT_DONE: bool = true;
+
 
 unsafe extern "C" {
     pub unsafe fn return_from_interrupt();
@@ -87,12 +105,21 @@ extern "C" fn vblank_nmi() {
     }
 }
 
+#[unsafe(no_mangle)]
+extern "C" fn blit_irq() {
+    unsafe {
+        Bcr::new().start.write(0);
+        BLIT_DONE = true;
+        return_from_interrupt();
+    }
+}
+
 #[unsafe(link_section = ".vector_table")]
 #[unsafe(no_mangle)]
 pub static _VECTOR_TABLE: [unsafe extern "C" fn(); 3] = [
-    vblank_nmi,            // Non-Maskable Interrupt vector
-    __boot,                // Reset vector
-    return_from_interrupt, // IRQ/BRK vector
+    vblank_nmi,             // Non-Maskable Interrupt vector
+    __boot,                 // Reset vector
+    return_from_interrupt,  // IRQ/BRK vector
 ];
 
 

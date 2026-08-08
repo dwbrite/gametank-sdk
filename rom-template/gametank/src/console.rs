@@ -50,6 +50,7 @@ impl Console {
         video_flags.insert(VideoFlags::DMA_GCARRY);
         video_flags.insert(VideoFlags::DMA_OPAQUE);
         video_flags.insert(VideoFlags::DMA_PAGE_OUT);
+        video_flags.set(VideoFlags::DMA_PAGE_OUT, false);
 
         let console = Self {
             bank_flags,

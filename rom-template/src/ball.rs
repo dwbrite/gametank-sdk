@@ -36,7 +36,6 @@ impl Ball {
             self.size,
             !self.color,
         );
-        blitter.wait_blit();
     }
 }
 

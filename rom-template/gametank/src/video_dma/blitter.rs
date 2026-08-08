@@ -283,5 +283,6 @@ impl<'a> BlitterGuard<'a> {
         // Right column: 1px wide, middle section (between letterbox bars)
         // From y=10 to y=117 (108 pixels)
         self.draw_square(127, LETTERBOX_HEIGHT, 1, 128 - (LETTERBOX_HEIGHT * 2), BLACK);
+        self.wait_blit();
     }
 }
