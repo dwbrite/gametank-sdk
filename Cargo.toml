@@ -26,11 +26,7 @@ homepage = "https://github.com/dwbrite/gametank-sdk"
 repository = "https://github.com/dwbrite/gametank-sdk"
 
 include = [
-    "src/**/*",
-    "build.rs",
-    "Cargo.toml",
-    "README.md",
-    "rom-template/**/*",
+    "src/bin/gtrom/rom-template.tar.gz"
 ]
 
 [package.metadata.wix]

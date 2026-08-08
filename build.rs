@@ -3,12 +3,23 @@ use flate2::{write::GzEncoder, Compression};
 
 fn main() {
     let manifest = PathBuf::from(env::var("CARGO_MANIFEST_DIR").unwrap());
-    let template = manifest.join("rom-template").canonicalize().unwrap();
-    let out = PathBuf::from(env::var("OUT_DIR").unwrap()).join("rom-template.tar.gz");
+    let template = manifest.join("rom-template");
+    let tarball = manifest.join("src/bin/gtrom/rom-template.tar.gz");
 
     println!("cargo:rerun-if-changed={}", template.display());
 
-    let enc = GzEncoder::new(File::create(&out).unwrap(), Compression::default());
+    // Published crates have no rom-template/ (cargo package strips nested
+    // manifests), but ship the tarball built during `cargo package`.
+    if !template.is_dir() {
+        assert!(
+            tarball.exists(),
+            "neither rom-template/ nor src/rom-template.tar.gz present"
+        );
+        return;
+    }
+
+    let template = template.canonicalize().unwrap();
+    let enc = GzEncoder::new(File::create(&tarball).unwrap(), Compression::default());
     let mut tar = tar::Builder::new(enc);
 
     for entry in walkdir::WalkDir::new(&template)

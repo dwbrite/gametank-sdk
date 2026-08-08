@@ -9,7 +9,7 @@ use flate2::read::GzDecoder;
 use tar::Archive;
 
 // Embed the SDK template tarball at compile time
-static SDK_TEMPLATE: &[u8] = include_bytes!(concat!(env!("OUT_DIR"), "/rom-template.tar.gz"));
+static SDK_TEMPLATE: &[u8] = include_bytes!("rom-template.tar.gz");
 
 /// Extract embedded SDK tarball to filesystem
 pub fn extract_sdk(base_target: &Path, include_audiofw_src: bool) -> Result<(), String> {
