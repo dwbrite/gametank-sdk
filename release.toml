@@ -1,3 +1,5 @@
+pre-release-hook = ["cargo", "build"]
+
 # Tag format for workspace member
 tag-prefix = "gametank-sdk-"
 tag-name = "{{prefix}}v{{version}}"

@@ -1,4 +1,4 @@
-use std::{env, fs::File, path::{Path, PathBuf}};
+use std::{env, fs::File, io::Read, path::{Path, PathBuf}};
 use flate2::{write::GzEncoder, Compression};
 
 fn main() {
@@ -9,11 +9,12 @@ fn main() {
     println!("cargo:rerun-if-changed={}", template.display());
 
     // Published crates have no rom-template/ (cargo package strips nested
-    // manifests), but ship the tarball built during `cargo package`.
+    // manifests), so they use the tarball committed alongside the source.
     if !template.is_dir() {
         assert!(
             tarball.exists(),
-            "neither rom-template/ nor src/rom-template.tar.gz present"
+            "neither rom-template/ nor {} present",
+            tarball.display()
         );
         return;
     }
@@ -22,15 +23,35 @@ fn main() {
     let enc = GzEncoder::new(File::create(&tarball).unwrap(), Compression::default());
     let mut tar = tar::Builder::new(enc);
 
-    for entry in walkdir::WalkDir::new(&template)
+    // Collect and sort so archive order doesn't depend on filesystem order.
+    let mut files: Vec<PathBuf> = walkdir::WalkDir::new(&template)
         .into_iter()
         .filter_entry(|e| keep(e.path(), &template))
-    {
-        let entry = entry.unwrap();
-        if !entry.file_type().is_file() { continue; }
-        let rel = entry.path().strip_prefix(&template).unwrap();
-        tar.append_path_with_name(entry.path(), rel).unwrap();
+        .filter_map(|e| e.ok())
+        .filter(|e| e.file_type().is_file())
+        .map(|e| e.into_path())
+        .collect();
+    files.sort();
+
+    for path in files {
+        let rel = path.strip_prefix(&template).unwrap();
+
+        let mut buf = Vec::new();
+        File::open(&path).unwrap().read_to_end(&mut buf).unwrap();
+
+        // Fixed metadata: mtime/uid/gid would otherwise make every rebuild
+        // produce different bytes and dirty the working tree.
+        let mut header = tar::Header::new_gnu();
+        header.set_size(buf.len() as u64);
+        header.set_mode(0o644);
+        header.set_mtime(0);
+        header.set_uid(0);
+        header.set_gid(0);
+        header.set_cksum();
+
+        tar.append_data(&mut header, rel, &buf[..]).unwrap();
     }
+
     tar.into_inner().unwrap().finish().unwrap();
 }
 
