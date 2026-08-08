@@ -33,16 +33,67 @@ pub trait TimeDaemon {
     fn get_now_ms(&self) -> f64;
 }
 
+/// Tracks whether the ACP firmware is keeping up with its sample deadline.
+#[derive(Default, Debug)]
+struct AcpStats {
+    periods: u32,
+    overruns: u32,
+    worst_compute: i32,
+
+    cycles_awake: i32,
+    asleep: bool,
+}
+
+impl AcpStats {
+    fn tick(&mut self, cycles: i32, waiting: bool) {
+        if self.asleep {
+            return;
+        }
+        self.cycles_awake += cycles;
+        if waiting {
+            self.worst_compute = self.worst_compute.max(self.cycles_awake);
+            self.asleep = true;
+        }
+    }
+
+    fn record(&mut self) {
+        self.periods += 1;
+        if self.asleep {
+            // woken by this IRQ; start timing the next sample
+            self.asleep = false;
+            self.cycles_awake = 0;
+        } else {
+            // still computing when the next sample came due
+            self.overruns += 1;
+        }
+    }
+
+    fn report(&mut self, interval: u32, budget: i32, reg: u8) {
+        if self.periods < interval {
+            return;
+        }
+        if self.overruns > 0 {
+            warn!(
+            "ACP: {}cy/sample, ${:02X} budgets {}cy — {}% of samples duplicated",
+            self.worst_compute,
+            reg,
+            budget,
+            self.overruns * 100 / self.periods,
+        );
+        }
+        self.periods = 0;
+        self.overruns = 0;
+        self.worst_compute = 0;
+    }
+}
+
 pub struct Emulator<Clock: TimeDaemon> {
     pub cpu_bus: CpuBus,
     pub acp_bus: AcpBus,
     pub cpu: W65C02S,
     pub acp: W65C02S,
-
     pub blitter: Blitter,
-
     pub clock_cycles_to_vblank: i32,
-
     pub last_emu_tick: f64,
     pub cpu_ns_per_cycle: f64,
     pub cpu_frequency_hz: f64,
@@ -51,10 +102,10 @@ pub struct Emulator<Clock: TimeDaemon> {
     pub target_sample_rate: f64,
     pub play_state: PlayState,
     pub wait_counter: u64,
-
     pub input_state: FnvIndexMap<InputCommand, KeyState, 32>, // capacity of 32 entries
-
     pub clock: Clock,
+
+    acp_stats: AcpStats,
 }
 
 impl <Clock: TimeDaemon> Emulator<Clock> {
@@ -80,11 +131,10 @@ impl <Clock: TimeDaemon> Debug for Emulator<Clock> {
             .field("acp", &self.acp)
             .field("blitter", &self.blitter)
             .field("clock_cycles_to_vblank", &self.clock_cycles_to_vblank)
-            .field("last_emu_tick", &self.last_emu_tick);
-
-        Ok(())
-    }}
-
+            .field("last_emu_tick", &self.last_emu_tick)
+            .finish()
+    }
+}
 
 impl <Clock: TimeDaemon> Emulator<Clock> {
     pub fn wasm_init(&mut self) {
@@ -101,14 +151,13 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
         let mut bus = CpuBus::default();
         let mut cpu = W65C02S::new();
         cpu.step(&mut bus); // take one initial step, to get through the reset vector
-        let acp = W65C02S::new();
 
+        let acp = W65C02S::new();
         let blitter = Blitter::default();
 
         let last_cpu_tick_ms = clock.get_now_ms();
         let cpu_frequency_hz = 3_579_545.0; // Precise frequency
         let cpu_ns_per_cycle = 1_000_000_000.0 / cpu_frequency_hz; // Nanoseconds per cycle
-
         let last_render_time = last_cpu_tick_ms;
 
         Emulator {
@@ -118,7 +167,6 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             cpu,
             acp,
             blitter,
-
             clock_cycles_to_vblank: 59659,
             last_emu_tick: last_cpu_tick_ms,
             cpu_frequency_hz,
@@ -129,6 +177,7 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             wait_counter: 0,
             input_state: Default::default(),
             clock,
+            acp_stats: AcpStats::default(),
         }
     }
 
@@ -149,7 +198,6 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
 
         let elapsed_ns = elapsed_ms * 1000000.0;
         let mut remaining_cycles: i32 = (elapsed_ns / self.cpu_ns_per_cycle) as i32;
-
         let mut acp_cycle_accumulator = 0;
 
         while remaining_cycles > 0 {
@@ -162,9 +210,7 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             }
 
             let cpu_cycles = self.cpu.step(&mut self.cpu_bus);
-
             remaining_cycles -= cpu_cycles;
-
             acp_cycle_accumulator += cpu_cycles * 4;
 
             // pass aram to acp
@@ -176,8 +222,8 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             for _ in 0..cpu_cycles {
                 self.blitter.cycle(&mut self.cpu_bus);
             }
-            // TODO: instant blit option
 
+            // TODO: instant blit option
             let blit_irq = self.blitter.irq_trigger;
             if blit_irq {
                 debug!("blit irq");
@@ -211,34 +257,50 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             let acp_cycles = self.acp.step(&mut self.acp_bus);
             *acp_cycle_accumulator -= acp_cycles;
             self.acp_bus.irq_counter -= acp_cycles;
+            self.acp_bus.cycles_since_write += acp_cycles;
+            self.acp_stats.tick(acp_cycles, self.acp.get_state() == AwaitingInterrupt);
 
             // clear stuff ig
             self.acp.set_irq(false);
             self.acp.set_nmi(false);
 
             if self.acp_bus.irq_counter <= 0 {
-                self.acp_bus.irq_counter = self.cpu_bus.system_control.sample_divisor() as i32 * 4;
+                let divisor = self.cpu_bus.system_control.sample_divisor() as i32;
+                let budget = divisor * 4;
+
+                self.acp_bus.irq_counter = budget;
                 self.acp.set_irq(true);
 
-                let sample_rate = self.cpu_frequency_hz / self.cpu_bus.system_control.sample_divisor() as f64;
-                // if audio_out is none or has mismatched sample rate
-                if self.audio_out.as_ref().is_none_or(|gta| gta.sample_rate != sample_rate) {
-                    warn!("recreated audio stream with new sample rate: {:.3}Hz (${:02X})", sample_rate, self.cpu_bus.system_control.audio_enable_sample_rate);
-                    self.audio_out = Some(GameTankAudio::new(sample_rate, self.target_sample_rate));
-                }
+                self.acp_stats.record();
+                self.acp_stats.report(
+                    (self.cpu_frequency_hz / divisor as f64) as u32,
+                    budget,
+                    self.cpu_bus.system_control.audio_enable_sample_rate,
+                );
 
-                if let Some(audio) = &mut self.audio_out {
-                    let next_sample_u8 = self.acp_bus.sample;
-                    if let Err(e) = audio.producer.push(next_sample_u8) {
-                        error!("not enough slots in audio producer: {e}");
-                    }
-                }
-
-                if let Some(audio) = &mut self.audio_out {
-                    audio.convert_to_output_buffers();
-                    // audio.process_audio();
-                }
+                self.emit_sample(divisor);
             }
+        }
+    }
+
+    /// Push the latched DAC value into the audio pipeline, recreating the
+    /// output stream if the program changed the sample rate.
+    fn emit_sample(&mut self, divisor: i32) {
+        let sample_rate = self.cpu_frequency_hz / divisor as f64;
+
+        if self.audio_out.as_ref().is_none_or(|gta| gta.sample_rate != sample_rate) {
+            warn!(
+                "recreated audio stream with new sample rate: {:.3}Hz (${:02X})",
+                sample_rate, self.cpu_bus.system_control.audio_enable_sample_rate
+            );
+            self.audio_out = Some(GameTankAudio::new(sample_rate, self.target_sample_rate));
+        }
+
+        if let Some(audio) = &mut self.audio_out {
+            if let Err(e) = audio.producer.push(self.acp_bus.sample) {
+                error!("not enough slots in audio producer: {e}");
+            }
+            audio.convert_to_output_buffers();
         }
     }
 
@@ -289,9 +351,11 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
                     self.blitter = Blitter::default();
                 }
             }
+
             self.input_state.insert(*key, self.input_state[key].update()).expect("shit's full dog ://");
         }
     }
+
     fn set_gamepad_input(&mut self, gamepad: usize, key: &InputCommand, button: &ControllerButton) {
         let gamepad = &mut self.cpu_bus.system_control.gamepads[gamepad];
         match button {

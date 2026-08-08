@@ -1,3 +1,2 @@
 [toolchain]
-channel = "mos"
-components = "rust-analyzer"
+components = ["rust-analyzer"]

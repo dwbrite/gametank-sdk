@@ -43,6 +43,9 @@ fn main(console: &mut Console) {
 
     let mut sequencer = audio_demo::init_demo();
     let mut balls = init_balls();
+
+    unsafe { core::ptr::write_volatile(console.audio.audio_freq as *mut u8, 0xFF) };
+
     loop {
         wait_vblank();
         console.flip_framebuffers();

@@ -16,6 +16,11 @@ pub struct AcpBus {
     pub irq_counter: i32,
     
     pub sample: u8,
+
+    // the follownig fields are for debug info
+
+    pub cycles_since_write: i32,
+    pub last_write_interval: i32,
 }
 
 impl AcpBus {
@@ -25,6 +30,8 @@ impl AcpBus {
         match address {
             0x8000..=0xFFFF => {
                 self.sample = data;
+                self.last_write_interval = self.cycles_since_write;
+                self.cycles_since_write = 0;
             }
             _ => {}
         }
