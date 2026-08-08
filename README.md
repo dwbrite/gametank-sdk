@@ -162,7 +162,7 @@ cargo +mos build --release
 ## Advanced: Nix Flake
 
 For ROM development or contributing to the SDK, a Nix flake is available as an alternative option.
-It is available in the `sdk-template/` folder, aka the `gametank/` folder of a generated rom project.
+It is available in the `rom-template/` folder, aka the `gametank/` folder of a generated rom project.
 
 ```bash
 # Enter the shell
