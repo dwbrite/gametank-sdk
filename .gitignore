@@ -4,6 +4,8 @@
 *.gtr
 *.gtrs
 
+rom-template/rom.gtr
+
 !roms/*.gtr
 !roms/*.gtrs
 !examples/**/*.gtr

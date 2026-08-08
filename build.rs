@@ -57,8 +57,7 @@ fn main() {
 
 fn keep(path: &Path, root: &Path) -> bool {
     if path == root { return true; }
-    !matches!(
-        path.file_name().and_then(|s| s.to_str()),
-        Some("target" | ".git" | "Cargo.lock" | "justfile")
-    )
+    let name = path.file_name().and_then(|s| s.to_str());
+    !matches!(name, Some("target" | ".git" | "Cargo.lock" | "justfile"))
+        && !name.is_some_and(|n| n.ends_with(".gtr"))
 }
