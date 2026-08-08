@@ -65,14 +65,14 @@ impl CartridgeType {
     pub fn write_byte(&mut self, address: u16, data: u8) {
         match self {
             CartridgeType::Cart2m(c) => { c.write_byte(address, data) }
-            _ => { error!("attempted write to non-writable cartridge") }
+            _ => { error!("attempted write to non-writable cartridge: address {:#06x} data {:#04x}", address, data) }
         }
     }
 
     pub fn update_via(&mut self, via: &mut [[u8; 16]; 2]) {
         match self {
             CartridgeType::Cart2m(c) => { c.update_via(via) }
-            _ => {}
+            _ => { error!("attempted update_via on non-writable cartridge") }
         }
     }
 }
