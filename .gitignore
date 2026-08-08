@@ -1,9 +1,6 @@
 **/target/
 .idea/
 
-src/bin/gtrom/rom-template.tar.gz
-
-
 *.gtr
 *.gtrs
 
