@@ -217,13 +217,13 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             self.acp.set_nmi(false);
 
             if self.acp_bus.irq_counter <= 0 {
-                self.acp_bus.irq_counter = self.cpu_bus.system_control.sample_rate() as i32 * 4;
+                self.acp_bus.irq_counter = self.cpu_bus.system_control.sample_divisor() as i32 * 4;
                 self.acp.set_irq(true);
 
-                let sample_rate = self.cpu_frequency_hz / self.cpu_bus.system_control.sample_rate() as f64;
+                let sample_rate = self.cpu_frequency_hz / self.cpu_bus.system_control.sample_divisor() as f64;
                 // if audio_out is none or has mismatched sample rate
                 if self.audio_out.as_ref().is_none_or(|gta| gta.sample_rate != sample_rate) {
-                    warn!("recreated audio stream with new sample rate: {:.3}Hz ({})", sample_rate, self.cpu_bus.system_control.sample_rate());
+                    warn!("recreated audio stream with new sample rate: {:.3}Hz (${:02X})", sample_rate, self.cpu_bus.system_control.audio_enable_sample_rate);
                     self.audio_out = Some(GameTankAudio::new(sample_rate, self.target_sample_rate));
                 }
 

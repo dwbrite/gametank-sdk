@@ -77,6 +77,13 @@ impl SystemControl {
         nmi == 1
     }
 
+    /// Timer divisor derived from $2006. Bit 7 is the ACP enable, not part of the rate.
+    #[inline(always)]
+    pub fn sample_divisor(&self) -> u32 {
+        let low7 = (self.audio_enable_sample_rate & 0x7F) as u32;
+        2 * low7 + 1 + (low7 & 1)
+    }
+
     #[inline(always)]
     pub fn sample_rate(&self) -> u8 {
         self.audio_enable_sample_rate

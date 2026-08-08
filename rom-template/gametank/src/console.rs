@@ -19,10 +19,9 @@ impl AudioManager {
         unsafe { core::ptr::write_volatile(self.audio_freq as *mut u8, 0) };
         self.aram.copy_from_slice(firmware);
 
-        // TODO: This is needed for the C GameTank emulator but doesn't
+        // This is needed for the C GameTank emulator but doesn't
         // seem to matter for the Rust emulator?
         unsafe { core::ptr::write_volatile(self.audio_reset as *mut u8, 1) };
-
         unsafe { core::ptr::write_volatile(self.audio_freq as *mut u8, 0xFF) };
     }
 }
