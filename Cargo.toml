@@ -56,6 +56,10 @@ path = "src/bin/gtgo/main.rs"
 name = "gtld"
 path = "src/bin/gtld/main.rs"
 
+[[bin]]
+name = "gtt"
+path = "src/bin/gtt/src/main.rs"
+
 [dependencies]
 # gte dependencies
 gte-core = { path = "emulator/core", version = "0.17.1" }
@@ -85,7 +89,7 @@ lazy_static = "1.5.0"
 once_cell = "1.19.0"
 
 # gtrom dependencies
-clap = { version = "4.5.45", features = ["derive"] }
+clap = { version = "4.6.4", features = ["derive"] }
 elf = "0.8.0"
 rustc-demangle = "0.1.26"
 flate2 = "1.1.9"
@@ -94,12 +98,8 @@ open = "5.4.1"
 toml = "1.1.4+spec-1.1.0"
 
 # gtgo dependencies
-ratatui = "0.29.0"
-rat-widget = "1.0.5"
-rat-theme = "0.27.11"
 anyhow = "1.0.99"
-crossbeam-channel = "0.5.15"
-indexmap = "2.11.1"
+rat-theme = "0.31.2"
 
 # gtld dependencies
 serialport = "4.7.2"
@@ -107,6 +107,23 @@ dialoguer = "0.11.0"
 structopt = "0.3.26"
 crc32fast = "1.5.0"
 tempfile = "3.20.0"
+
+# gtt dependencies
+color-eyre = "0.6.5"
+confy = "2.0.0"
+cpal = "0.15"
+crossbeam-channel = "0.5.15"
+crossterm = "0.29.0"
+gte-acp = "0.17.1"
+gte-w65c02s = "0.17.1"
+indexmap = { version = "2", features = ["serde"] }
+ratatui = "0.30.2"
+ratatui-explorer = "0.3.0"
+rat-widget = "3.2.1"
+rmp = "0.8.15"
+rmp-serde = "1.3.1"
+serde = { version = "1", features = ["derive"] }
+tune = "0.36.0"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 thread-priority = "1.1.0"
