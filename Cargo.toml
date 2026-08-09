@@ -18,7 +18,7 @@ exclude = [
 [package]
 name = "gametank-sdk"
 version = "0.18.1"
-edition = "2021"
+edition = "2024"
 description = "GameTank SDK - Complete toolkit for GameTank development"
 license = "MIT"
 authors = ["Devin Brite <dwbrite@gmail.com>"]

@@ -283,14 +283,14 @@ impl AppInitialized {
         }
 
         // Drain whatever the emulator pushed into its own buffer and forward into our bridge.
-        if let (Some(ref mut audio_out), Some(ref mut audio)) = (&mut self.emulator.audio_out, &mut self.audio) {
+        if let (Some(audio_out), Some(audio)) = (&mut self.emulator.audio_out, &mut self.audio) {
             while let Ok(buf) = audio_out.output_buffer.pop() {
                 audio.push_buffer(buf);
             }
         }
 
         // Drive the audio bridge if present. It will pull from the bridge's internal consumer.
-        if let Some(ref mut audio) = self.audio {
+        if let Some(audio) = &mut self.audio {
             audio.process_audio();
         }
 

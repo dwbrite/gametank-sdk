@@ -1,4 +1,3 @@
-
 pub fn get_now_ms() -> f64 {
     #[cfg(target_arch = "wasm32")]
     {
@@ -11,13 +10,12 @@ pub fn get_now_ms() -> f64 {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    unsafe {
+    {
+        use std::sync::OnceLock;
         use std::time::Instant;
-        static mut START_INSTANT: Option<Instant> = None;
 
-        if START_INSTANT.is_none() {
-            START_INSTANT = Some(Instant::now());
-        }
-        START_INSTANT.unwrap().elapsed().as_secs_f64() * 1000.0
+        static START_INSTANT: OnceLock<Instant> = OnceLock::new();
+
+        START_INSTANT.get_or_init(Instant::now).elapsed().as_secs_f64() * 1000.0
     }
 }
