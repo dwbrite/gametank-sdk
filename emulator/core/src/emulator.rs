@@ -74,7 +74,7 @@ impl AcpStats {
         }
         if self.overruns > 0 {
             warn!(
-            "ACP: {}cy/sample, ${:02X} budgets {}cy — {}% of samples duplicated",
+            "ACP: {}cy/sample, ${:02X} budgets {}cy - {}% of samples duplicated",
             self.worst_compute,
             reg,
             budget,

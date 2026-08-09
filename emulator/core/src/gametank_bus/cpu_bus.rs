@@ -43,7 +43,11 @@ pub struct CpuBus {
 
     // pub aram: Option<ARAM>,
     pub cartridge: CartridgeType,
+    pub op: OpCtx,
 }
+
+#[derive(Copy, Clone, Default, Debug)]
+pub struct OpCtx { pub pc: u16, pub a: u8, pub x: u8, pub y: u8, pub s: u8 }
 
 impl Default for CpuBus {
     fn default() -> Self {
@@ -76,6 +80,7 @@ impl Default for CpuBus {
             cartridge: CartridgeType::from_slice(CURRENT_GAME),
             // aram: Some(Box::new([0; 0x1000])),
             vram_quad_written: [false; 32],
+            op: Default::default(),
         };
 
         bus
@@ -172,6 +177,7 @@ impl CpuBus {
             }
             // Cartridge
             0x8000..=0xFFFF => {
+                warn!("cart write ${:04X}={:02X} @ pc ${:04X} a={:02X} x={:02X} y={:02X}", address, data, self.op.pc, self.op.a, self.op.x, self.op.y);
                 self.cartridge.write_byte(address - 0x8000, data);
             }
             _ => {
@@ -266,6 +272,11 @@ impl CpuBus {
 }
 
 impl System for CpuBus {
+    fn read_opcode(&mut self, cpu: &mut W65C02S, addr: u16) -> u8 {
+        self.op = OpCtx { pc: addr, a: cpu.get_a(), x: cpu.get_x(), y: cpu.get_y(), s: cpu.get_s() };
+        self.read_byte(addr)
+    }
+
     fn read(&mut self, _: &mut W65C02S, addr: u16) -> u8 {
         self.read_byte(addr)
     }
