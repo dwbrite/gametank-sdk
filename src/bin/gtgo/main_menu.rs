@@ -1,7 +1,7 @@
 use crossbeam_channel::Sender;
-use ratatui::{crossterm::event::Event, layout::Rect, style::{Color, Stylize}, symbols::border, widgets::{Block, Widget}, Frame};
+use ratatui::{crossterm::event::Event, layout::Rect, style::Color, symbols::border, widgets::{Block, Widget}, Frame};
 
-use crate::{helpers::SCHEME, tracker::Tracker, ui::quickmenu::{qi, QuickMenu}, Component, GlobalEvent};
+use crate::{helpers::SCHEME, ui::quickmenu::{qi, QuickMenu}, Component, GlobalEvent};
 
 #[allow(dead_code)]
 pub struct MainMenu {
@@ -21,8 +21,7 @@ impl MainMenu {
         let qm = QuickMenu::init(" Program Select ".to_string(), vec![
             qi("_Emulator", true, || { todo!() }),
             qi("_Tracker", true, move || {
-                let tracker = Tracker::init(txx.clone());
-                let _ = txx.send(GlobalEvent::ChangeInterface(Box::new(tracker))); 
+                let _ = txx.send(GlobalEvent::LaunchTracker);
             }),
             qi("_Build", has_podman, || { println!("ur mom") }),
             qi("ROM _Flasher", true, || { todo!() }),

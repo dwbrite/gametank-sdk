@@ -1,5 +1,3 @@
-
-
 #[derive(Debug, Clone, Copy)]
 pub enum LaneKind {
     Beat,
@@ -9,14 +7,13 @@ pub enum LaneKind {
     Fx,
 }
 
-
 #[derive(Clone)]
 pub struct Lane {
     pub title: String,
-    pub padding: (u8, u8), // padding left/right for non-title cells
+    pub padding: (u8, u8),
     pub width: u16,
     pub kind: LaneKind,
-    pub ch: Option<usize>
+    pub ch: Option<usize>,
 }
 
 impl Lane {
@@ -26,7 +23,7 @@ impl Lane {
             padding: (0, 2),
             width: 7,
             kind: LaneKind::Beat,
-            ch: None            
+            ch: None,
         }
     }
 
@@ -36,7 +33,7 @@ impl Lane {
             padding: (0, 0),
             width: 3,
             kind: LaneKind::Seq,
-            ch: None
+            ch: None,
         }
     }
 
@@ -46,17 +43,17 @@ impl Lane {
             padding: (2, 0),
             width: 5,
             kind: LaneKind::Note,
-            ch: Some(ch as usize)
+            ch: Some(ch as usize),
         }
     }
 
     pub fn vol(ch: u8) -> Self {
         Self {
-            title: " v ".to_string(),
+            title: " v  ".to_string(),
             padding: (1, 1),
-            width: 3,
+            width: 4,
             kind: LaneKind::Vol,
-            ch: Some(ch as usize)
+            ch: Some(ch as usize),
         }
     }
 
@@ -66,7 +63,7 @@ impl Lane {
             padding: (0, 1),
             width: 4,
             kind: LaneKind::Fx,
-            ch: Some(ch as usize)
+            ch: Some(ch as usize),
         }
     }
 }
