@@ -37,6 +37,7 @@ pub struct AppInitialized {
     show_left_pane: bool,
     show_right_pane: bool,
     show_bottom_pane: bool,
+    show_acp_load: bool,
 
     audio: Option<GameTankAudio>,
 }
@@ -93,6 +94,7 @@ impl From<&mut App> for AppInitialized {
             show_left_pane: false,
             show_right_pane: false,
             show_bottom_pane: false,
+            show_acp_load: false,
             audio: audio_bridge,
         }
     }
@@ -187,6 +189,24 @@ impl AppInitialized {
             });
         }
 
+        if self.show_acp_load {
+            let stats = self.emulator.acp_load_stats();
+            egui::Window::new("ACP Load").show(self.egui_renderer.context(), |ui| {
+                if stats.budget_cycles > 0 {
+                    let pct_of_budget = stats.worst_case_cycles as f32 * 100.0 / stats.budget_cycles as f32;
+                    ui.label(format!("Sample rate: {} Hz", stats.sample_rate_hz));
+                    ui.label(format!(
+                        "Worst-case ISR: {} / {} cycles ({:.1}%)",
+                        stats.worst_case_cycles, stats.budget_cycles, pct_of_budget
+                    ));
+                    ui.label(format!("Overruns: {}% of samples", stats.overrun_percent));
+                    ui.label(format!("(measured over {} samples)", stats.periods_measured));
+                } else {
+                    ui.label("No ACP load data yet. Waiting for audio playback...");
+                }
+            });
+        }
+
         egui::CentralPanel::default().frame(frame).show(self.egui_renderer.context(), |ui| {
             // Set the minimum size for the center pane
             let center_min_size = egui::vec2(128.0, 128.0);
@@ -241,7 +261,7 @@ use gte_core::inputs::InputCommand::Controller1;
 use wasm_bindgen::prelude::*;
 use winit::event::ElementState::Pressed;
 use winit::keyboard;
-use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter};
+use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F5};
 use winit::keyboard::SmolStr;
 use crate::app_delegation::InstantClock;
 
@@ -322,7 +342,10 @@ impl ApplicationHandler for AppInitialized {
                 self.handle_resized(new_size.width, new_size.height);
             }
             WindowEvent::KeyboardInput { event, .. } => {
-                let KeyEvent {  logical_key,   state,  .. } = event;
+                let KeyEvent {  logical_key,   state, repeat,  .. } = event;
+                if logical_key == keyboard::Key::Named(F5) && state == Pressed && !repeat {
+                    self.show_acp_load = !self.show_acp_load;
+                }
                 if let Some(cmd) = self.input_bindings.get(&logical_key).copied() {
                     if let Some(ks) = self.emulator.input_state.get(&cmd) {
                         self.emulator.set_input_state(cmd, ks.update_state(state==Pressed))

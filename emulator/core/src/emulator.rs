@@ -33,6 +33,22 @@ pub trait TimeDaemon {
     fn get_now_ms(&self) -> f64;
 }
 
+/// Snapshot measuring the last 1 second-ish of ACP load
+#[derive(Copy, Clone, Debug, Default)]
+pub struct AcpLoadStats {
+    /// Worst-case ACP cycles the audio ISR took to run in the last window.
+    pub worst_case_cycles: i32,
+    /// ACP cycle budget available per sample at the current sample rate.
+    pub budget_cycles: i32,
+    /// Percentage (0-100) of samples in the last window where the ISR was
+    /// still running when the next sample's IRQ came due (i.e. dropped).
+    pub overrun_percent: u32,
+    /// The ACP's current sample rate in Hz, derived from the rate register.
+    pub sample_rate_hz: u32,
+    /// Number of sample periods the last window covers (for context).
+    pub periods_measured: u32,
+}
+
 /// Tracks whether the ACP firmware is keeping up with its sample deadline.
 #[derive(Default, Debug)]
 struct AcpStats {
@@ -42,6 +58,12 @@ struct AcpStats {
 
     cycles_awake: i32,
     asleep: bool,
+
+    last_worst_compute: i32,
+    last_budget: i32,
+    last_overrun_percent: u32,
+    last_sample_rate: u32,
+    last_periods: u32,
 }
 
 impl AcpStats {
@@ -81,6 +103,11 @@ impl AcpStats {
             self.overruns * 100 / self.periods,
         );
         }
+        self.last_worst_compute = self.worst_compute;
+        self.last_budget = budget;
+        self.last_overrun_percent = self.overruns * 100 / self.periods.max(1);
+        self.last_sample_rate = interval;
+        self.last_periods = self.periods;
         self.periods = 0;
         self.overruns = 0;
         self.worst_compute = 0;
@@ -315,6 +342,16 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
 
     pub fn set_input_state(&mut self, input_command: InputCommand, state: KeyState) {
         self.input_state.insert(input_command, state).expect("shit's full dog ://");
+    }
+
+    pub fn acp_load_stats(&self) -> AcpLoadStats {
+        AcpLoadStats {
+            worst_case_cycles: self.acp_stats.last_worst_compute,
+            budget_cycles: self.acp_stats.last_budget,
+            overrun_percent: self.acp_stats.last_overrun_percent,
+            sample_rate_hz: self.acp_stats.last_sample_rate,
+            periods_measured: self.acp_stats.last_periods,
+        }
     }
 
     fn process_inputs(&mut self) {
