@@ -357,7 +357,7 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             self.input_state.insert(*key, self.input_state[key].update()).expect("shit's full dog ://");
         }
     }
-    
+
     pub fn apply_paddle_delta(&mut self, delta: i8) {
         self.cpu_bus.system_control.apply_paddle_delta(delta);
     }
