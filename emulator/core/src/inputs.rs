@@ -11,6 +11,12 @@ pub struct GamePad {
     pub c: bool,
     pub start: bool,
 
+    //4 extra paddle bits
+    pub x: bool,
+    pub y: bool,
+    pub z: bool,
+    pub mode: bool,
+
     pub port_select: bool,
 }
 

@@ -59,7 +59,8 @@ impl Default for CpuBus {
                 via_regs: [0; 16],
                 audio_enable_sample_rate: 0,
                 dma_flags: BlitterFlags(0b0111_1111),
-                gamepads: [GamePad::default(), GamePad::default()]
+                gamepads: [GamePad::default(), GamePad::default()],
+                port1_paddle_val: 0
             },
             blitter: BlitterRegisters {
                 vx: 0,

@@ -37,6 +37,7 @@ pub struct AppInitialized {
     show_left_pane: bool,
     show_right_pane: bool,
     show_bottom_pane: bool,
+    pub mouse_paddle_enabled: bool,
 
     audio: Option<GameTankAudio>,
 }
@@ -94,6 +95,7 @@ impl From<&mut App> for AppInitialized {
             show_right_pane: false,
             show_bottom_pane: false,
             audio: audio_bridge,
+            mouse_paddle_enabled: false,
         }
     }
 }
@@ -143,6 +145,15 @@ impl AppInitialized {
                     ui.toggle_value(&mut self.show_left_pane, "show left panel");
                     ui.toggle_value(&mut self.show_bottom_pane, "show bottom panel");
                     ui.toggle_value(&mut self.show_right_pane, "show right panel");
+
+                    ui.separator();
+                    ui.checkbox(&mut self.mouse_paddle_enabled, "Enable Mouse Paddle");
+                    if self.mouse_paddle_enabled {
+                        let delta_x = ui.input(|i| i.pointer.delta().x);
+                        if delta_x != 0.0 {
+                            self.emulator.apply_paddle_delta(delta_x as i8);
+                        }
+                    }
                 });
             });
 
