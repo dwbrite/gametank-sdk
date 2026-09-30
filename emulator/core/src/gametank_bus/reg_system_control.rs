@@ -37,7 +37,9 @@ pub struct SystemControl {
     pub audio_enable_sample_rate: u8,
     pub dma_flags: BlitterFlags,
 
-    pub gamepads: [GamePad; 2]
+    pub gamepads: [GamePad; 2],
+
+    pub port1_paddle_val: u8
 }
 
 impl SystemControl {
@@ -156,10 +158,17 @@ impl SystemControl {
     #[inline(always)]
     pub fn peek_gamepad_byte(&self, port_1: bool) -> u8 {
         let gamepad = &self.gamepads[(!port_1) as usize];
+        let paddle_val = self.port1_paddle_val;
         let mut byte = 255;
         if !gamepad.port_select {
             byte &= !((gamepad.start as u8) << 5);
             byte &= !((gamepad.a as u8) << 4);
+
+            byte &= !((gamepad.x as u8) << 1); //paddle bit
+            byte &= !((gamepad.y as u8) << 2); //paddle bit
+            byte &= !((gamepad.z as u8) << 3); //paddle bit
+            byte &= !((gamepad.mode as u8) << 0); //paddle bit
+
         } else {
             byte &= !((gamepad.c as u8) << 5);
             byte &= !((gamepad.b as u8) << 4);
@@ -169,5 +178,26 @@ impl SystemControl {
             byte &= !((gamepad.right as u8) << 0);
         }
         byte
+    }
+
+    #[inline(always)]
+    pub fn apply_paddle_delta(&mut self, delta: i8) {
+        self.port1_paddle_val = self.port1_paddle_val.saturating_add_signed(delta);
+        let bits = !self.port1_paddle_val;
+
+        let gamepad = &mut self.gamepads[0];
+
+        // Pins evaluated during Read 1 (port_select = true):
+        gamepad.up    = (bits & (1 << 0)) != 0; // Bit 0 -> UP pin
+        gamepad.down  = (bits & (1 << 1)) != 0; // Bit 1 -> DOWN pin
+        gamepad.left  = (bits & (1 << 2)) != 0; // Bit 2 -> Left pin
+        gamepad.right = (bits & (1 << 3)) != 0; // Bit 3 -> Right pin
+
+        // Pins evaluated during Read 0 (port_select = false):
+        gamepad.x     = (bits & (1 << 4)) != 0; // Bit 4 -> X pin
+        gamepad.y     = (bits & (1 << 5)) != 0; // Bit 5 -> Y pin
+        gamepad.z     = (bits & (1 << 6)) != 0; // Bit 6 -> Z pin
+        gamepad.mode  = (bits & (1 << 7)) != 0; // Bit 7 -> Mode pin
+
     }
 }

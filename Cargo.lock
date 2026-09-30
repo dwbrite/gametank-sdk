@@ -1606,7 +1606,7 @@ dependencies = [
 
 [[package]]
 name = "gametank-sdk"
-version = "0.18.1"
+version = "0.18.2-rc.1"
 dependencies = [
  "anyhow",
  "clap 4.5.53",

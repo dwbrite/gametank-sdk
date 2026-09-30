@@ -96,7 +96,7 @@ impl AcpStats {
         }
         if self.overruns > 0 {
             warn!(
-            "ACP: {}cy/sample, ${:02X} budgets {}cy — {}% of samples duplicated",
+            "ACP: {}cy/sample, ${:02X} budgets {}cy - {}% of samples duplicated",
             self.worst_compute,
             reg,
             budget,
@@ -131,6 +131,7 @@ pub struct Emulator<Clock: TimeDaemon> {
     pub wait_counter: u64,
     pub input_state: FnvIndexMap<InputCommand, KeyState, 32>, // capacity of 32 entries
     pub clock: Clock,
+    pub mouse_paddle_enabled: bool,
 
     acp_stats: AcpStats,
 }
@@ -205,6 +206,7 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
             input_state: Default::default(),
             clock,
             acp_stats: AcpStats::default(),
+            mouse_paddle_enabled: false
         }
     }
 
@@ -391,6 +393,14 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
 
             self.input_state.insert(*key, self.input_state[key].update()).expect("shit's full dog ://");
         }
+    }
+
+    pub fn apply_paddle_delta(&mut self, delta: i8) {
+        self.cpu_bus.system_control.apply_paddle_delta(delta);
+    }
+    
+    pub fn set_mouse_paddle_enabled(&mut self, enabled: bool) {
+        self.mouse_paddle_enabled = enabled;
     }
 
     fn set_gamepad_input(&mut self, gamepad: usize, key: &InputCommand, button: &ControllerButton) {

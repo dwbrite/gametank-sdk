@@ -38,6 +38,7 @@ pub struct AppInitialized {
     show_right_pane: bool,
     show_bottom_pane: bool,
     show_acp_load: bool,
+    pub mouse_paddle_enabled: bool,
 
     audio: Option<GameTankAudio>,
 }
@@ -96,6 +97,7 @@ impl From<&mut App> for AppInitialized {
             show_bottom_pane: false,
             show_acp_load: false,
             audio: audio_bridge,
+            mouse_paddle_enabled: false,
         }
     }
 }
@@ -140,13 +142,28 @@ impl AppInitialized {
                 });
             });
 
+            let prev_paddle_state = self.mouse_paddle_enabled;
+
             egui::TopBottomPanel::bottom("bottom_pane_1").resizable(false).show_separator_line(true).show(self.egui_renderer.context(), |ui| {
                 ui.horizontal(|ui| {
                     ui.toggle_value(&mut self.show_left_pane, "show left panel");
                     ui.toggle_value(&mut self.show_bottom_pane, "show bottom panel");
                     ui.toggle_value(&mut self.show_right_pane, "show right panel");
+
+                    ui.separator();
+                    ui.checkbox(&mut self.mouse_paddle_enabled, "Enable Mouse Paddle");
+                    if self.mouse_paddle_enabled {
+                        let delta_x = ui.input(|i| i.pointer.delta().x);
+                        if delta_x != 0.0 {
+                            self.emulator.apply_paddle_delta(delta_x as i8);
+                        }
+                    }
                 });
             });
+
+            if prev_paddle_state && !self.mouse_paddle_enabled {
+                self.emulator.cpu_bus.system_control.gamepads[0] = Default::default();
+            }
 
             let mut left_size = 0.0;
             let mut right_size = 0.0;
