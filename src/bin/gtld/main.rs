@@ -185,8 +185,6 @@ fn load_rom(port: &mut Box<dyn SerialPort>, file: Option<String>, cartridge: Opt
 
     write_all(port, stretched_rom_buffer);
 
-    port.flush()?;
-
     Ok("go check it".to_string())
 }
 
