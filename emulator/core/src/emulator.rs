@@ -353,6 +353,8 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
     pub fn set_opcode_cycle_profile(&mut self, profile: gte_w65c02s::OpcodeCycleProfile) {
         self.cpu.set_cycle_profile(profile);
         self.acp.set_cycle_profile(profile);
+    }
+
     pub fn acp_load_stats(&self) -> AcpLoadStats {
         AcpLoadStats {
             worst_case_cycles: self.acp_stats.last_worst_compute,
