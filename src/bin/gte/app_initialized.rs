@@ -37,6 +37,8 @@ pub struct AppInitialized {
     show_left_pane: bool,
     show_right_pane: bool,
     show_bottom_pane: bool,
+    pub mouse_paddle_enabled: bool,
+    show_acp_load: bool,
 
     toast_message: Option<String>,
     toast_until: Option<std::time::Instant>,
@@ -98,7 +100,9 @@ impl From<&mut App> for AppInitialized {
             show_bottom_pane: false,
             toast_message: None,
             toast_until: None,
+            show_acp_load: false,
             audio: audio_bridge,
+            mouse_paddle_enabled: false,
         }
     }
 }
@@ -143,13 +147,28 @@ impl AppInitialized {
                 });
             });
 
+            let prev_paddle_state = self.mouse_paddle_enabled;
+
             egui::TopBottomPanel::bottom("bottom_pane_1").resizable(false).show_separator_line(true).show(self.egui_renderer.context(), |ui| {
                 ui.horizontal(|ui| {
                     ui.toggle_value(&mut self.show_left_pane, "show left panel");
                     ui.toggle_value(&mut self.show_bottom_pane, "show bottom panel");
                     ui.toggle_value(&mut self.show_right_pane, "show right panel");
+
+                    ui.separator();
+                    ui.checkbox(&mut self.mouse_paddle_enabled, "Enable Mouse Paddle");
+                    if self.mouse_paddle_enabled {
+                        let delta_x = ui.input(|i| i.pointer.delta().x);
+                        if delta_x != 0.0 {
+                            self.emulator.apply_paddle_delta(delta_x as i8);
+                        }
+                    }
                 });
             });
+
+            if prev_paddle_state && !self.mouse_paddle_enabled {
+                self.emulator.cpu_bus.system_control.gamepads[0] = Default::default();
+            }
 
             let mut left_size = 0.0;
             let mut right_size = 0.0;
@@ -208,6 +227,22 @@ impl AppInitialized {
                 self.toast_message = None;
                 self.toast_until = None;
             }
+        if self.show_acp_load {
+            let stats = self.emulator.acp_load_stats();
+            egui::Window::new("ACP Load").show(self.egui_renderer.context(), |ui| {
+                if stats.budget_cycles > 0 {
+                    let pct_of_budget = stats.worst_case_cycles as f32 * 100.0 / stats.budget_cycles as f32;
+                    ui.label(format!("Sample rate: {} Hz", stats.sample_rate_hz));
+                    ui.label(format!(
+                        "Worst-case ISR: {} / {} cycles ({:.1}%)",
+                        stats.worst_case_cycles, stats.budget_cycles, pct_of_budget
+                    ));
+                    ui.label(format!("Overruns: {}% of samples", stats.overrun_percent));
+                    ui.label(format!("(measured over {} samples)", stats.periods_measured));
+                } else {
+                    ui.label("No ACP load data yet. Waiting for audio playback...");
+                }
+            });
         }
 
         egui::CentralPanel::default().frame(frame).show(self.egui_renderer.context(), |ui| {
@@ -265,6 +300,7 @@ use wasm_bindgen::prelude::*;
 use winit::event::ElementState::Pressed;
 use winit::keyboard;
 use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F6};
+use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F5};
 use winit::keyboard::SmolStr;
 use crate::app_delegation::InstantClock;
 
@@ -358,6 +394,8 @@ impl ApplicationHandler for AppInitialized {
                     };
                     self.toast_message = Some(message.to_string());
                     self.toast_until = Some(std::time::Instant::now() + std::time::Duration::from_secs(2));
+                if logical_key == keyboard::Key::Named(F5) && state == Pressed && !repeat {
+                    self.show_acp_load = !self.show_acp_load;
                 }
                 if let Some(cmd) = self.input_bindings.get(&logical_key).copied() {
                     if let Some(ks) = self.emulator.input_state.get(&cmd) {
