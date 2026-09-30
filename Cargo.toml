@@ -59,6 +59,7 @@ path = "src/bin/gtld/main.rs"
 [dependencies]
 # gte dependencies
 gte-core = { path = "emulator/core", version = "0.17.1" }
+gte-w65c02s = { path = "emulator/core/gte-w65c02s", version = "0.17.1" }
 winit = { version = "0.30", features = ["rwh_06"] }
 egui = { version = "0.31" }
 egui_extras = "0.31"

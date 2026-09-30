@@ -346,6 +346,13 @@ impl <Clock: TimeDaemon> Emulator<Clock> {
         self.input_state.insert(input_command, state).expect("shit's full dog ://");
     }
 
+    pub fn opcode_cycle_profile(&self) -> gte_w65c02s::OpcodeCycleProfile {
+        self.cpu.get_cycle_profile()
+    }
+
+    pub fn set_opcode_cycle_profile(&mut self, profile: gte_w65c02s::OpcodeCycleProfile) {
+        self.cpu.set_cycle_profile(profile);
+        self.acp.set_cycle_profile(profile);
     pub fn acp_load_stats(&self) -> AcpLoadStats {
         AcpLoadStats {
             worst_case_cycles: self.acp_stats.last_worst_compute,

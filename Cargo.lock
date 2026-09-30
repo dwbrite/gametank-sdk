@@ -1624,6 +1624,7 @@ dependencies = [
  "futures",
  "gloo-timers",
  "gte-core",
+ "gte-w65c02s",
  "image",
  "indexmap 2.14.0",
  "klingt",
