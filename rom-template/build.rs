@@ -35,7 +35,10 @@ fn main() {
     writeln!(f, "SECTIONS {{").unwrap();
     for bank in 0..=126 {
         writeln!(f, "  .text.bank{0} : {{ KEEP(*(.text.bank{0})) KEEP(*(.text.bank{0}.*)) }} > BANK{0} = 0xFF", bank).unwrap();
-        writeln!(f, "  .rodata.bank{0} : {{ KEEP(*(.rodata.bank{0})) KEEP(*(.rodata.bank{0}.*)) }} > BANK{0}", bank).unwrap();
+        // Bank 125 hosts remaining wavetable instrument
+        // data too large to fit in FIXED_FLASH
+        let extra = if bank == 125 { " KEEP(*(.const.wavetables*))" } else { "" };
+        writeln!(f, "  .rodata.bank{0} : {{ KEEP(*(.rodata.bank{0})) KEEP(*(.rodata.bank{0}.*)){1} }} > BANK{0}", bank, extra).unwrap();
     }
 
     writeln!(f, "  .text : {{ *(.text*) }} > FIXED_FLASH = 0xFF").unwrap();

@@ -5,9 +5,9 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
     let fw_dir = Path::new(&manifest).join("audiofw");
 
-    if env::var("CARGO_FEATURE_AUDIO_WAVETABLE_8CH").is_ok() {
+    if env::var("CARGO_FEATURE_AUDIO_WAVETABLE").is_ok() {
         assemble_wavetable_firmware(
-            "wavetable-8ch",
+            "wavetable",
             &["main", "wave", "vol"],
             &manifest,
             &out_dir,

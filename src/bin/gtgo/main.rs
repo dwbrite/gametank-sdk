@@ -1,12 +1,11 @@
 pub mod main_menu;
 pub mod helpers;
 pub mod ui;
-pub mod tracker;
 
-use std::{thread::sleep, time::Duration};
+use std::{process::Command, thread::sleep, time::Duration};
 
 use ratatui::{crossterm::event::Event, layout::Rect, DefaultTerminal, Frame};
-use anyhow::{bail, Ok, Result};
+use anyhow::{bail, Result};
 
 use crate::{helpers::poll_events, main_menu::MainMenu};
 
@@ -17,6 +16,7 @@ pub trait Component {
 
 pub enum GlobalEvent {
     ChangeInterface(Box<dyn Component>),
+    LaunchTracker,
     Quit,
 }
 
@@ -27,21 +27,30 @@ pub struct GtGo {
 }
 
 impl GtGo {
-    fn run(&mut self) -> Result<()> {
+    fn draw(&mut self) {
         let _ = self.terminal.draw(|f| {
             let events = poll_events();
             self.state.update(events);
-            self.state.render(f, f.area()); // unhandled error
+            self.state.render(f, f.area());
         });
+    }
+}
 
-        for event in self.rx.try_iter() {
-            match event {
-                GlobalEvent::ChangeInterface(component) => self.state = component,
-                GlobalEvent::Quit => bail!("Exit"),
-            }
-        }
+fn launch_gtt() {
+    let sibling = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|d| d.join("gtt")))
+        .filter(|p| p.exists());
 
-        Ok(())
+    if let Some(path) = sibling {
+        let _ = Command::new(path).status();
+    } else if std::env::var_os("CARGO").is_some() {
+        let _ = Command::new("cargo")
+            .args(["run", "--bin", "gtt"])
+            .current_dir(env!("CARGO_MANIFEST_DIR"))
+            .status();
+    } else {
+        let _ = Command::new("gtt").status();
     }
 }
 
@@ -67,6 +76,19 @@ fn run(terminal: DefaultTerminal) -> Result<()> {
     
     loop {
         sleep(Duration::from_millis(16));
-        app.run()?
+        app.draw();
+
+        for event in app.rx.try_iter() {
+            match event {
+                GlobalEvent::ChangeInterface(component) => app.state = component,
+                GlobalEvent::LaunchTracker => {
+                    ratatui::restore();
+                    launch_gtt();
+                    app.terminal = ratatui::init();
+                    let _ = poll_events();
+                }
+                GlobalEvent::Quit => bail!("Exit"),
+            }
+        }
     }
 }

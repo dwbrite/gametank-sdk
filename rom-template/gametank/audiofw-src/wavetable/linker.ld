@@ -7,11 +7,11 @@ MEMORY {
   /* 256 bytes for volume table (half-amplitude sine for vol_table[s-v] - vol_table[s+v]) */
   VOL (rwx)      : ORIGIN = 0x0200, LENGTH = 0x0100
 
-  /* 2.75k for wavetables (11 slots) */
-  WAVE (rwx)     : ORIGIN = 0x0300, LENGTH = 0x0B00
+  /* 2.5k for 10 wavetables */
+  WAVE (rwx)     : ORIGIN = 0x0300, LENGTH = 0x0A00
   
-  /* 0.5 kb reserved for program, + ideally empty stack */
-  ARAM (rwx)     : ORIGIN = 0x0E00, LENGTH = 0x2FA
+  /* ~750 bytes for program + stack headroom, up to the vector table. */
+  ARAM (rwx)     : ORIGIN = 0x0D00, LENGTH = 0x02FA
   VECTOR_TABLE(rw): ORIGIN = 0x0FFA, LENGTH = 6
 
   SAMPLE (w)     : ORIGIN = 0x8000, LENGTH = 0x8000

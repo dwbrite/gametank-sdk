@@ -1,10 +1,10 @@
 //! Audio demo module - example chord progressions and sequencing.
 //!
 //! Works with wavetable and FM synthesis cargo features:
-//! - `audio-wavetable-8ch` - 8 voices, 11 PCM instruments
+//! - `audio-wavetable` - 7 voices, 11 PCM instruments
 //! - `audio-fm-4ch` - 4 FM channels, 4 operators each, full ADSR per operator
 
-#[cfg(feature = "audio-wavetable-8ch")]
+#[cfg(feature = "audio-wavetable")]
 const MAX_VOLUME: u8 = 63;
 
 /// Sequencer state for the FM demo
@@ -15,7 +15,7 @@ pub struct DemoSequencer {
 }
 
 /// Sequencer state for the wavetable demo
-#[cfg(feature = "audio-wavetable-8ch")]
+#[cfg(feature = "audio-wavetable")]
 pub struct DemoSequencer {
     frame:               u16,
     step:                u8,
@@ -73,7 +73,7 @@ impl DemoSequencer {
     }
 }
 
-#[cfg(feature = "audio-wavetable-8ch")]
+#[cfg(feature = "audio-wavetable")]
 impl DemoSequencer {
     pub const fn new() -> Self {
         Self {
@@ -164,7 +164,7 @@ pub fn init_demo() -> DemoSequencer {
     DemoSequencer::new()
 }
 
-#[cfg(feature = "audio-wavetable-8ch")]
+#[cfg(feature = "audio-wavetable")]
 pub fn init_demo() -> DemoSequencer {
     use gametank::audio::{voices, WAVETABLE};
 

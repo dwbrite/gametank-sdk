@@ -8,9 +8,9 @@ edition = "2024"
 [workspace]
 
 [features]
-default = ["audio-wavetable-8ch"]
+default = ["audio-wavetable"]
 audio-fm-4ch = ["gametank/audio-fm-4ch"]
-audio-wavetable-8ch = ["gametank/audio-wavetable-8ch"]
+audio-wavetable = ["gametank/audio-wavetable"]
 
 [profile.release]
 strip = "none"

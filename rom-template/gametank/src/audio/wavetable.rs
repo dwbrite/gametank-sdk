@@ -1,9 +1,9 @@
-//! # 8-Voice Wavetable Synthesizer
+//! # 7-Voice Wavetable Synthesizer
 //!
-//! This firmware provides 8 independent voices, each with:
+//! This firmware provides 7 independent voices, each with:
 //! - **Note/Frequency** - MIDI notes or raw frequency values
 //! - **Volume** - 0 (silent) to 63 (max)
-//! - **Wavetable** - One of 8 waveform slots
+//! - **Wavetable** - One of 10 waveform slots, plus a built-in Noise instrument
 //!
 //! ## Quick Start
 //!
@@ -27,11 +27,17 @@
 //!
 //! ## Wavetables
 //!
-//! The firmware has 8 wavetable slots. Use [`WAVETABLE`] to get slot addresses:
+//! The firmware has 10 wavetable slots. Use [`WAVETABLE`] to get slot addresses:
 //!
 //! ```rust,ignore
 //! v[0].set_wavetable(WAVETABLE[0]);  // First waveform
 //! v[1].set_wavetable(WAVETABLE[1]);  // Second waveform
+//! ```
+//!
+//! Use the NOISE_* constants to access the virtual noise instruments:
+//! ```rust,ignore
+//! v[2].set_wavetable(NOISE_SENTINEL_MODE0);
+//! v[2].set_wavetable(NOISE_SENTINEL_MODE1);
 //! ```
 //!
 //! You can load custom waveforms (256 bytes each) into audio RAM:
@@ -49,18 +55,38 @@ pub const VOICE_BASE: usize = 0x3041;
 /// Number of bytes per voice
 pub const VOICE_SIZE: usize = 7;
 /// Number of voices
-pub const VOICE_COUNT: usize = 8;
+pub const VOICE_COUNT: usize = 7;
 
 /// Base address for wavetables in ACP RAM (CPU-side)
 pub const WAVETABLE_BASE: usize = 0x3300;
 /// Size of each wavetable in bytes
 pub const WAVETABLE_SIZE: usize = 256;
-/// Number of wavetables available
+/// Number of entries in [`WAVETABLE`]: 10 real wavetable slots plus the
+/// reserved Noise sentinel slot at [`NOISE_INSTRUMENT`].
 pub const WAVETABLE_COUNT: usize = 11;
 
-/// Wavetable slot addresses (CPU-side)
+/// Reserved instrument slot for Noise Mode0/Mode1
+pub const NOISE_INSTRUMENT: usize = 10;
+
+/// Hiss mode
+pub const NOISE_SENTINEL_MODE0: u16 = 0xfffe;
+/// Crash mode
+pub const NOISE_SENTINEL_MODE1: u16 = 0xffff;
+
+/// Wavetable slot addresses (CPU-side). The last entry is the Noise
+/// instrument's sentinel value rather than a real address.
 pub const WAVETABLE: [u16; WAVETABLE_COUNT] = [
-    0x0300, 0x0400, 0x0500, 0x0600, 0x0700, 0x0800, 0x0900, 0x0A00, 0x0B00, 0x0C00, 0x0D00,
+    0x0300,
+    0x0400,
+    0x0500,
+    0x0600,
+    0x0700,
+    0x0800,
+    0x0900,
+    0x0A00,
+    0x0B00,
+    0x0C00,
+    NOISE_SENTINEL_MODE0,
 ];
 
 /// A single synthesizer voice.

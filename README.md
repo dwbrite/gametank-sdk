@@ -48,7 +48,8 @@ Bundled with the SDK are development tools:
 | `gtrom` | the main build tool; initializes new projects, builds ROMs (orchestrates containers automatically), converts ELF to `.gtr`, and can run/flash directly. |
 | `gte`   | the rusty gametank emulator. It's not quite as featureful as the C++ version, but it's easier to install, useful for basic debugging/testing |
 | `gtld`  | used to flash `.gtr` ROMs to cartridges, and to update the flasher firmware. |
-| `gtgo`  | intended to be a "one-stop-shop" TUI for development, includes a (WIP) music tracker and build tools |
+| `gtt`   | "gt-tracker" music tracker for creating music to add to your ROM |
+| `gtgo`  | intended to be a "one-stop-shop" TUI for development, includes gt-tracker and build tools |
     
 Development is done in VSCode (sry), and there's a `.vscode/settings.json` for the linked projects for rust-analyzer.
 
