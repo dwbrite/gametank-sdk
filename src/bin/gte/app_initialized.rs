@@ -227,6 +227,8 @@ impl AppInitialized {
                 self.toast_message = None;
                 self.toast_until = None;
             }
+        }
+
         if self.show_acp_load {
             let stats = self.emulator.acp_load_stats();
             egui::Window::new("ACP Load").show(self.egui_renderer.context(), |ui| {
@@ -299,8 +301,7 @@ use gte_core::inputs::InputCommand::Controller1;
 use wasm_bindgen::prelude::*;
 use winit::event::ElementState::Pressed;
 use winit::keyboard;
-use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F6};
-use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F5};
+use winit::keyboard::NamedKey::{ArrowDown, ArrowLeft, ArrowRight, ArrowUp, Enter, F5, F6};
 use winit::keyboard::SmolStr;
 use crate::app_delegation::InstantClock;
 
@@ -394,6 +395,7 @@ impl ApplicationHandler for AppInitialized {
                     };
                     self.toast_message = Some(message.to_string());
                     self.toast_until = Some(std::time::Instant::now() + std::time::Duration::from_secs(2));
+                }
                 if logical_key == keyboard::Key::Named(F5) && state == Pressed && !repeat {
                     self.show_acp_load = !self.show_acp_load;
                 }
