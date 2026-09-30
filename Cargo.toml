@@ -17,7 +17,7 @@ exclude = [
 
 [package]
 name = "gametank-sdk"
-version = "0.19.0-rc"
+version = "0.19.0"
 edition = "2024"
 description = "GameTank SDK - Complete toolkit for GameTank development"
 license = "MIT"
@@ -58,8 +58,8 @@ path = "src/bin/gtld/main.rs"
 
 [dependencies]
 # gte dependencies
-gte-core = { path = "emulator/core", version = "0.19.0-rc" }
-gte-w65c02s = { path = "emulator/core/gte-w65c02s", version = "0.19.0-rc" }
+gte-core = { path = "emulator/core", version = "0.19.0" }
+gte-w65c02s = { path = "emulator/core/gte-w65c02s", version = "0.19.0" }
 winit = { version = "0.30", features = ["rwh_06"] }
 egui = { version = "0.31" }
 egui_extras = "0.31"
